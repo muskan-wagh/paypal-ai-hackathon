@@ -29,9 +29,9 @@ export async function POST() {
     const payout = await createPayout(receiver, "2.00");
     return NextResponse.json({
       ok: true,
-      batchId: payout.batch_header.batch_id,
+      batchId: payout.batch_header.payout_batch_id,
       status: payout.batch_header.batch_status,
-      next: `Poll with: curl "http://localhost:3000/api/spike/payout?id=${payout.batch_header.batch_id}"`,
+      next: `Poll with: curl "http://localhost:3000/api/spike/payout?id=${payout.batch_header.payout_batch_id}"`,
     });
   } catch (error) {
     if (error instanceof PaypalError && error.code === "PAYOUT_NOT_AVAILABLE") {
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     const batch = await getPayoutBatch(batchId);
     return NextResponse.json({
       ok: true,
-      batchId: batch.batch_header.batch_id,
+      batchId: batch.batch_header.payout_batch_id,
       batchStatus: batch.batch_header.batch_status,
       items: batch.items.map((item) => ({
         id: item.payout_item_id,

@@ -180,7 +180,7 @@ export async function createPayout(receiver: string, amount: string, currency = 
   }, "payouts");
   if (!res.ok) throw await normalizeError(res);
   return (await res.json()) as {
-    batch_header: { batch_id: string; batch_status: string };
+    batch_header: { payout_batch_id: string; batch_status: string };
   };
 }
 
@@ -189,7 +189,7 @@ export async function getPayoutBatch(batchId: string) {
   const res = await paypalFetch(`/v1/payments/payouts/${batchId}`, {}, "payouts");
   if (!res.ok) throw await normalizeError(res);
   return (await res.json()) as {
-    batch_header: { batch_id: string; batch_status: string };
+    batch_header: { payout_batch_id: string; batch_status: string };
     items: Array<{
       payout_item_id: string;
       transaction_status: string;
