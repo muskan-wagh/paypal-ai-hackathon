@@ -38,6 +38,12 @@ export default async function MilestonesPage() {
           approval → payout.
         </p>
         <div className="mt-6 space-y-3">
+          {rows.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-neutral-300 p-6 text-center text-sm text-neutral-500">
+              No milestones yet. (In this demo, milestones are seeded by{" "}
+              <code className="rounded bg-neutral-100 px-1">npm run db:reset</code>.)
+            </p>
+          ) : null}
           {rows.map((row) => (
             <a
               key={row.milestone.id}

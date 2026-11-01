@@ -6,7 +6,7 @@ import { writeEvent } from "@/db/log";
 import { getSessionUser } from "@/lib/session";
 import { assertTransition } from "@/lib/state-machine";
 import { runProofEvaluation, markEvaluated } from "@/lib/evaluate";
-import { AIFailedError } from "@/lib/ai";
+import { AIFailedError, CreditsExhaustedError } from "@/lib/ai";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_FILES = 4;
@@ -121,6 +121,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       items: outcome.items,
     });
   } catch (error) {
+    if (error instanceof CreditsExhaustedError) {
+      return NextResponse.json(
+        {
+          ok: true,
+          submissionId: submission.id,
+          evaluationFailed: true,
+          code: "CREDITS_EXHAUSTED",
+          message: error.message,
+          usageUrl: error.usageUrl,
+          keyUrl: error.keyUrl,
+        },
+        { status: 402 },
+      );
+    }
     const attempts = error instanceof AIFailedError ? error.attempts : undefined;
     return NextResponse.json(
       {

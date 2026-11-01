@@ -1,4 +1,5 @@
 import SpikeClient from "./spike-client";
+import HealthPanel from "@/components/health-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,13 @@ export default function SpikePage() {
         Everything below runs against the PayPal <strong>sandbox</strong> and OpenRouter free
         models. No real money.
       </p>
+
+      <section className="mt-6 rounded-lg border border-neutral-200 bg-white p-4">
+        <h2 className="font-semibold">System health (Phase 8)</h2>
+        <div className="mt-2">
+          <HealthPanel />
+        </div>
+      </section>
 
       <SpikeClient clientId={clientId} />
 

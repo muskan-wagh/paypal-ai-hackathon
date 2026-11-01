@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import AppHeader from "@/components/app-header";
 import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";

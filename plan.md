@@ -188,14 +188,27 @@ Render hosting ($50 sponsor credits) · public GitHub repo with a visible OSI li
 - [ ] Full end-to-end dry run: create → fund → submit → evaluate → approve → payout lands
       in the sandbox Personal account (screenshot for README)
 
-## Phase 8 — Resilience & polish (Day 6–7)
-- [ ] Global error handling: PayPal errors → capture + surface `debug_id` (PayPal support convention)
-- [ ] OpenRouter error handling (verified error shapes):
+## Phase 8 — Resilience & polish (Day 6–7) — COMPLETE (2026-11-01)
+- [x] Global error handling: PayPal errors → capture + surface `debug_id`
+      (spikeErrorResponse maps PaypalError → {code, message, details, debugId};
+      verified: mocked decline returned debug_id `3fc230ceac4f5`)
+- [x] OpenRouter error handling (verified error shapes):
       `429` → honor `Retry-After` header + retry with backoff + route through the fallback
-      model chain; `402` → clear "credits exhausted" screen with the key-usage check link
-      (`GET /api/v1/key` surface daily free-quota remaining in a small debug/health panel)
-- [ ] AI failure containment: retries capped at 1 → then "evaluation failed, try again" — never auto-approve/payout from a model result
-- [ ] Access-control pass: freelancer cannot reach approve/fund endpoints; AI endpoints cannot reach PayPal endpoints
+      model chain (shared runner `src/lib/ai.ts`; verified live: nemotron 429-retry + fallback
+      to gemma on upstream-pool contention)
+      `402` → clear "credits exhausted" screen with the key-usage check link
+      (`CREDITS_EXHAUSTED` → 402 + usageUrl/keyUrl in all AI routes; health panel surfaces
+      daily free quota via `/api/health` → OpenRouter `/api/v1/key`)
+- [x] AI failure containment: retries capped at 1 → then "evaluation failed, try again" —
+      never auto-approve/payout from a model result (verified: failed generation left
+      milestone in DRAFT; failed evaluation left milestone in SUBMITTED; approve/payout
+      routes have zero AI imports)
+- [x] Access-control pass: freelancer cannot reach approve/fund endpoints; AI endpoints
+      cannot reach PayPal endpoints (matrix verified: Dana→approve/reject/payout/orders all 403;
+      Maya→submit 403; grep audit: zero AI route imports PayPal; zero secrets committed)
+- [x] Empty states: milestone list, submissions, evaluations, timeline ("No activity yet")
+- [x] Health/debug panel: `/api/health` + `HealthPanel` client component on `/spike`
+      (OpenRouter key validity + daily free quota, PayPal token fetch, DB counts)
 - [ ] Edge cases: deadline passed, duplicate submission, reupload after rejection, missing files
 - [ ] Visual polish: coherent Tailwind look, empty states, loading states, mobile-safe layout
 - [ ] "Built With" accuracy: list only what is actually used (organizer guidance: PayPal and AI "impossible to miss")

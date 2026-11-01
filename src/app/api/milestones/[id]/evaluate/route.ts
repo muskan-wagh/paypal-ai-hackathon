@@ -5,7 +5,7 @@ import { milestones, submissions } from "@/db/schema";
 import { getSessionUser } from "@/lib/session";
 import { assertTransition } from "@/lib/state-machine";
 import { runProofEvaluation, markEvaluated } from "@/lib/evaluate";
-import { AIFailedError } from "@/lib/ai";
+import { AIFailedError, CreditsExhaustedError } from "@/lib/ai";
 
 /**
  * Phase 6 — retry the AI evaluation for the latest submission of a SUBMITTED milestone.
@@ -60,6 +60,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       items: outcome.items,
     });
   } catch (error) {
+    if (error instanceof CreditsExhaustedError) {
+      return NextResponse.json(
+        { ok: false, code: "CREDITS_EXHAUSTED", message: error.message, usageUrl: error.usageUrl, keyUrl: error.keyUrl },
+        { status: 402 },
+      );
+    }
     const attempts = error instanceof AIFailedError ? error.attempts : undefined;
     return NextResponse.json(
       { ok: true, evaluationFailed: true, message: "AI evaluation failed — retry from this page.", attempts },

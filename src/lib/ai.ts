@@ -21,13 +21,41 @@ export class AIFailedError extends Error {
   }
 }
 
-type AttemptableError = { statusCode?: unknown; message?: string };
+/** Thrown when OpenRouter returns 402 — trying other models won't help (same key). */
+export class CreditsExhaustedError extends Error {
+  readonly usageUrl = "https://openrouter.ai/settings/credits";
+  readonly keyUrl = "https://openrouter.ai/settings/keys";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "CreditsExhaustedError";
+  }
+}
+
+type AttemptableError = { statusCode?: unknown; responseHeaders?: Record<string, string>; message?: string };
+
+function isCreditsExhausted(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const cast = error as AttemptableError;
+  if (cast.statusCode === 402) return true;
+  return /\b402\b|insufficient (credits|balance)|credits exhausted/i.test(cast.message ?? "");
+}
 
 function isRateLimit(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   const cast = error as AttemptableError;
   if (cast.statusCode === 429) return true;
   return /\b429\b|rate.?limited/i.test(cast.message ?? "");
+}
+
+/** Honor Retry-After when present (capped), else a short default. */
+function retryAfterMs(error: unknown): number {
+  const cast = error as AttemptableError;
+  const headers = cast.responseHeaders ?? {};
+  const raw = headers["retry-after"] ?? headers["Retry-After"];
+  const seconds = raw ? Number(raw) : NaN;
+  if (Number.isFinite(seconds) && seconds > 0) return Math.min(seconds, 10) * 1000;
+  return 2000;
 }
 
 export function modelsFromEnv(): string[] {
@@ -44,7 +72,7 @@ export async function generateStructuredWithFallback(input: {
   schema: z.ZodType;
   system: string;
   prompt?: string;
-  messages?: any[];
+  messages?: unknown[];
   temperature?: number;
 }): Promise<{
   model: string;
@@ -73,7 +101,7 @@ export async function generateStructuredWithFallback(input: {
           model: openrouter(model),
           schema: input.schema,
           system: input.system,
-          ...(input.messages ? { messages: input.messages } : { prompt: input.prompt ?? "" }),
+          ...(input.messages ? { messages: input.messages as never } : { prompt: input.prompt ?? "" }),
           temperature: input.temperature ?? 0.2,
         });
         const u = usage as { inputTokens?: number | null; outputTokens?: number | null; totalTokens?: number | null };
@@ -89,13 +117,20 @@ export async function generateStructuredWithFallback(input: {
         };
       } catch (error) {
         const ms = Date.now() - started;
+        // 402 = key has no credits — trying other models won't help.
+        if (isCreditsExhausted(error)) {
+          throw new CreditsExhaustedError(
+            "OpenRouter returned 402 — your key has no credits. Top up at openrouter.ai/settings/credits " +
+              "(one-time $10 lifts the free-model daily cap from 50 to 1,000 requests).",
+          );
+        }
         attempts.push({
           model,
           error: error instanceof Error ? `${error.name}: ${error.message.slice(0, 300)}` : String(error).slice(0, 300),
           ms,
         });
         if (tryNumber === 0 && isRateLimit(error)) {
-          await sleep(2000);
+          await sleep(retryAfterMs(error));
           continue;
         }
         break; // non-retryable, or retry spent → next model in the chain

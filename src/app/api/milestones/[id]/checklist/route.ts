@@ -9,6 +9,7 @@ import {
   AIFailedError,
   ChecklistSchema,
   CHECKLIST_SYSTEM,
+  CreditsExhaustedError,
   buildChecklistPrompt,
   generateStructuredWithFallback,
   modelsFromEnv,
@@ -92,6 +93,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       tokens: result.tokens,
     });
   } catch (error) {
+    if (error instanceof CreditsExhaustedError) {
+      return NextResponse.json(
+        { ok: false, code: "CREDITS_EXHAUSTED", message: error.message, usageUrl: error.usageUrl, keyUrl: error.keyUrl },
+        { status: 402 },
+      );
+    }
     if (error instanceof AIFailedError) {
       return NextResponse.json(
         {

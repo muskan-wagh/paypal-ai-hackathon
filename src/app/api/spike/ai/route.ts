@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
   AIFailedError,
+  CreditsExhaustedError,
   generateStructuredWithFallback,
   modelsFromEnv,
 } from "@/lib/ai";
@@ -37,6 +38,12 @@ export async function GET() {
       fallbackAttempts: result.attempts.length > 0 ? result.attempts : undefined,
     });
   } catch (error) {
+    if (error instanceof CreditsExhaustedError) {
+      return NextResponse.json(
+        { ok: false, code: "CREDITS_EXHAUSTED", message: error.message, usageUrl: error.usageUrl, keyUrl: error.keyUrl },
+        { status: 402 },
+      );
+    }
     if (error instanceof AIFailedError) {
       return NextResponse.json({ ok: false, code: "AI_ALL_MODELS_FAILED", attempts: error.attempts }, { status: 502 });
     }

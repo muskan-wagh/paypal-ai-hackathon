@@ -29,7 +29,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse("forbidden", { status: 403 });
   }
 
-  return new NextResponse(row.data as any, {
+  return new NextResponse(row.data as unknown as BodyInit, {
     status: 200,
     headers: {
       "Content-Type": row.mimeType,
