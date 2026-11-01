@@ -81,20 +81,28 @@ Render hosting ($50 sponsor credits) · public GitHub repo with a visible OSI li
       (pin Node in `engines` in package.json; set Node 22 on Render as well)
 - [ ] `.env.example` committed; real `.env.local` git-ignored — secrets never in repo (also mandated by the organizer update)
 
-## Phase 2 — Day-1 risk spikes (Day 1–2) — de-risk the two unknowns first
-- [ ] **Spike A — Checkout popup:** server creates an order (Orders v2) →
+## Phase 2 — Day-1 risk spikes (Day 1–2) — ✅ COMPLETE (2026-11-01)
+- [x] **Spike A — Checkout popup:** server creates an order (Orders v2) →
       `@paypal/react-paypal-js` renders buttons → popup opens → sandbox buyer approves →
-      server captures (Payments) → money moves to the seller account
-- [ ] Capture negative test: header
-      `PayPal-Mock-Response: {"mock_application_codes":"INSTRUMENT_DECLINED"}` → decline path works
-- [ ] **Spike B — Payouts:** OAuth client-credentials token (cached) →
-      `POST /v1/payments/payouts` via direct fetch, receiver = the sandbox **Personal**
-      account email → poll `GET /v1/payments/payouts/{batch_id}` → item reaches `SUCCESS`
-      → confirm the money landed in the buyer account
-- [ ] Record both request/response payloads in a scratch note (becomes README + debugging evidence)
-- [ ] **Decision gate:** if Payouts is blocked in sandbox → adopt Plan B:
-      always attempt the real call, store + display the raw response, and fall back to a
-      labeled "simulated" ledger entry toggle (integration remains genuine; rules satisfied)
+      server captures (Payments) — **VERIFIED end-to-end** (order `3JM7QA816NR0187259` →
+      capture `COMPLETED`; true capture id read from `purchase_units[0].payments.captures[0]`)
+- [x] Capture negative test: header
+      `PayPal-Mock-Response: {"mock_application_codes":"INSTRUMENT_DECLINED"}` → mocked
+      decline returned through our parser (422 + `debug_id`) — **VERIFIED**
+- [x] **Spike B — Payouts:** OAuth client-credentials token (cached) →
+      `POST /v1/payments/payouts` via direct fetch → poll `GET /v1/payments/payouts/{id}` →
+      **VERIFIED**: batch `K896R37KPUKQY` `PENDING → PROCESSING` → item `SUCCESS`
+      (transaction `6XS234528F691971M`, USD 2.00) in ~10 s
+- [x] **Country blocker found + fixed:** default developer-country sandbox app returned
+      `PAYOUT_NOT_AVAILABLE` AND generic popup error at checkout — root cause: sender/merchant
+      sandbox account country. **Fix (committed): `proofpay-us` sandbox app on a US-country
+      business account for BOTH checkout and payouts** (`PAYPAL_CLIENT_*` = US app;
+      optional `PAYPAL_PAYOUT_CLIENT_*` override remains if needed later)
+- [x] **AI spike:** OpenRouter key verified (`/api/v1/key` → 200, free tier) + `generateObject`
+      structured verdict via Zod; pinned `google/gemma-4-31b-it:free` was upstream-pool
+      rate-limited (429) → **primary swapped to `nvidia/nemotron-3.5-super-vl:free`,
+      Gemma as fallback** + bounded 429-retry (~13 s typical)
+- [ ] **Decision gate:** not needed — real Payouts round-trip verified; Plan B ledger not required
 
 ## Phase 3 — Foundation (Day 2–3)
 - [ ] Drizzle schema:
