@@ -220,18 +220,21 @@ Render hosting ($50 sponsor credits) · public GitHub repo with a visible OSI li
 - [ ] Render deployment already satisfies **Best Use of Render** (credits claim + deploy)
 - [ ] Skip both if the demo isn't flawless without them — no new risk allowed near the deadline
 
-## Phase 10 — Documentation (Day 8)
-- [ ] README: pitch (problem in 2 sentences), screenshots, **Run in < 5 minutes**
-      (clone → `.env.local` keys → `npm i` → `npm run db:reset` → `npm run dev` → persona logins)
-- [ ] `DEMO.md`: scripted walkthrough + any test credentials judges need, free access through Dec 15
+## Phase 10 — Documentation (Day 8) — COMPLETE (2026-11-01)
+- [x] README: pitch (problem in 2 sentences), screenshots, **Run in < 5 minutes**
+      (clone → `.env` keys → `npm i` → `npm run db:reset` → `npm run dev` → persona logins)
+- [x] `DEMO.md`: scripted walkthrough + test credentials, free access through Dec 15
 - [ ] One architecture diagram (image): user → AI → human gate → PayPal timeline
-- [ ] "Tools" statement: exact PayPal products used + OpenRouter with the **exact pinned
+      (ASCII diagram in README; image export pending if time permits)
+- [x] "Tools" statement: exact PayPal products used + OpenRouter with the **exact pinned
       model id(s)** actually used + how the AI is used (rule requires naming the real tool)
-- [ ] Guardrails section: AI never moves money; approval is human-only; audit trail shown
-- [ ] License visible in About; repo topics updated; webpack of secrets check (`git log` scan)
+- [x] Guardrails section: AI never moves money; approval is human-only; audit trail shown
+- [x] License visible in About; repo topics updated; webpack of secrets check (`git log` scan)
 
-## Phase 11 — Deployment (Day 8)
-- [ ] Deploy on Render (Node service or Dockerfile); env vars set in the Render dashboard (not in the repo)
+## Phase 11 — Deployment (Day 8) — CONFIG COMPLETE (deploy pending Render account)
+- [x] Deploy on Render (Node service or Dockerfile); env vars set in the Render dashboard (not in the repo)
+      (`render.yaml` blueprint: Node 22, build `npm install && npm run build`, start `npm start`,
+      health check `/api/health`, 1 GB persistent disk at `.data`, env vars marked `sync: false`)
 - [ ] Post-deploy: seed demo data; run the **hosted** end-to-end (fund + payout) once for real
 - [ ] Save the hosted URL for the Devpost form; verify `npm run dev` still works locally for clone-and-run judges
 

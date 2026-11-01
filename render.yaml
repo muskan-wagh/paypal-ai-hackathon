@@ -1,0 +1,33 @@
+# Render deployment configuration for ProofPay
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: proofpay
+    runtime: node
+    plan: starter  # $7/mo — needed for persistent disk (SQLite)
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: PAYPAL_CLIENT_ID
+        sync: false  # set in Render dashboard
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_PAYOUT_RECEIVER
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: nvidia/nemotron-3.5-super-vl:free
+      - key: AI_FALLBACKS
+        value: google/gemma-4-31b-it:free,google/gemma-4-26b-a4b-it:free
+      - key: SESSION_SECRET
+        generateValue: true
+    disk:
+      name: proofpay-data
+      mountPath: /opt/render/project/src/.data
+      sizeGB: 1
