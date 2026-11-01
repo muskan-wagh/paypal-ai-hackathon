@@ -22,7 +22,16 @@ export async function POST(request: Request) {
   }
   try {
     const capture = await captureOrder(body.orderID, body.mock);
-    return NextResponse.json({ ok: true, captureId: capture.id, status: capture.status });
+    const nested = capture.purchase_units?.[0]?.payments?.captures?.[0];
+    return NextResponse.json({
+      ok: true,
+      orderId: capture.id,
+      orderStatus: capture.status,
+      captureId: nested?.id ?? null,
+      captureStatus: nested?.status ?? null,
+      amount: nested?.amount ?? null,
+      payerEmail: capture.payer?.email_address ?? null,
+    });
   } catch (error) {
     return spikeErrorResponse(error);
   }

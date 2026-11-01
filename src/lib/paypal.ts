@@ -145,7 +145,8 @@ export async function createOrder(input: { amount: string; currency: string }) {
   return (await res.json()) as { id: string; status: string };
 }
 
-/** Payments — capture an approved order. `mockApplicationCode` runs negative testing. */
+/** Payments — capture an approved order. `mockApplicationCode` runs negative testing.
+ *  The real capture id lives at purchase_units[0].payments.captures[0].id. */
 export async function captureOrder(orderId: string, mockApplicationCode?: string) {
   const res = await paypalFetch(`/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
@@ -153,7 +154,16 @@ export async function captureOrder(orderId: string, mockApplicationCode?: string
     mockApplicationCode,
   });
   if (!res.ok) throw await normalizeError(res);
-  return (await res.json()) as { id: string; status: string };
+  return (await res.json()) as {
+    id: string;
+    status: string;
+    payer?: { email_address?: string };
+    purchase_units?: Array<{
+      payments?: {
+        captures?: Array<{ id: string; status: string; amount?: { value: string; currency_code: string } }>;
+      };
+    }>;
+  };
 }
 
 /** Payouts v1 — direct REST (the server SDK has no Payouts controller — verified).
