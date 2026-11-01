@@ -104,22 +104,25 @@ Render hosting ($50 sponsor credits) · public GitHub repo with a visible OSI li
       Gemma as fallback** + bounded 429-retry (~13 s typical)
 - [ ] **Decision gate:** not needed — real Payouts round-trip verified; Plan B ledger not required
 
-## Phase 3 — Foundation (Day 2–3)
-- [ ] Drizzle schema:
+## Phase 3 — Foundation (Day 2–3) — PARTIAL COMPLETE (2026-11-01)
+- [x] Drizzle schema:
       `users (role: client|freelancer, sandboxPaypalEmail)` ·
       `milestones (brief, amountCents, currency, deadline, paypalOrderId, paypalCaptureId,
       status)` · `checklist_items (title, acceptanceCriteria, checkType, sortOrder)` ·
       `submissions + files (BLOB ≤ 5 MB)` · `evaluations + eitems (verdict, explanation,
       rawJson)` · `payouts (batchId, status, receiver, rawJson)` ·
       `events (audit ledger: type, actor, payload, createdAt)`
-- [ ] State machine constants enforced **server-side only**:
+- [x] State machine constants enforced **server-side only** (`src/lib/state-machine.ts`):
       `DRAFT → CHECKLISTED → FUNDED → SUBMITTED → EVALUATED → APPROVED|REJECTED → PAID`
-- [ ] `npm run db:reset` seed script: Maya (client), Dana (freelancer), one DRAFT milestone,
-      one FUNDED milestone (so the demo can start mid-flow if needed)
-- [ ] Persona auth: login screen → HttpOnly HMAC-signed cookie `{ userId, exp }`,
-      logout, middleware, **server-side role checks** (only a client can approve/fund;
-      only a freelancer can submit)
-- [ ] App shell: milestone list, milestone detail, money-timeline block fed by `events`
+- [x] `npm run db:reset` seed script: Maya (client), Dana (freelancer; payout email =
+      `PAYPAL_PAYOUT_RECEIVER`), one DRAFT milestone,
+      one FUNDED milestone (with AI checklist + events so the demo starts mid-flow)
+- [x] Persona auth: login screen → HttpOnly HMAC-signed cookie `{ userId, exp }`,
+      logout, edge middleware (presence) + **server-side role hydration checks**
+      (verified: no-cookie → 307, tampered HMAC → 307, valid → pages render)
+- [x] App shell: `/milestones` list w/ status chips, `/milestones/[id]` detail w/
+      checklist • submissions • evaluation cards • payouts • events timeline,
+      per-role "next action" hints, progress pillsline block fed by `events`
 
 ## Phase 4 — Milestone creation + AI checklist (Day 3)
 - [ ] Client form: title, brief, amount (integer cents), currency, deadline, freelancer select

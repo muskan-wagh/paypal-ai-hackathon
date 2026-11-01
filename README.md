@@ -16,7 +16,8 @@ stands between an evaluation and a payout.
 nvm install 22 && nvm use 22   # Node 22+ required
 npm install
 cp .env.example .env           # fill in the values (see comments in that file)
-npm run dev                    # → http://localhost:3000/spike
+npm run db:reset               # recreate + seed the SQLite demo database
+npm run dev                    # → http://localhost:3000
 ```
 
 Environment values: PayPal **Sandbox** credentials from
