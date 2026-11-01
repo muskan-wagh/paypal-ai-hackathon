@@ -28,14 +28,28 @@ export class PaypalError extends Error {
   }
 }
 
-/** Access tokens are valid ~3–9 h; refresh 5 min before expiry. */
-let cachedToken: { value: string; expiresAt: number } | null = null;
+/**
+ * Access tokens are valid ~3–9 h; refresh 5 min before expiry.
+ * `payouts` may use a separate sandbox app (PAYPAL_PAYOUT_CLIENT_ID/SECRET) —
+ * workaround for the sandbox country restriction on sending payouts.
+ */
+const tokenCache: Record<"checkout" | "payouts", { value: string; expiresAt: number } | null> = {
+  checkout: null,
+  payouts: null,
+};
 
-async function accessToken(): Promise<string> {
-  if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.value;
-  const clientId = process.env.PAYPAL_CLIENT_ID;
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
+type CredsKind = "checkout" | "payouts";
+
+function credentials(credsKind: CredsKind): { id: string; secret: string } {
+  const id =
+    credsKind === "payouts" && process.env.PAYPAL_PAYOUT_CLIENT_ID
+      ? process.env.PAYPAL_PAYOUT_CLIENT_ID
+      : process.env.PAYPAL_CLIENT_ID;
+  const secret =
+    credsKind === "payouts" && process.env.PAYPAL_PAYOUT_CLIENT_SECRET
+      ? process.env.PAYPAL_PAYOUT_CLIENT_SECRET
+      : process.env.PAYPAL_CLIENT_SECRET;
+  if (!id || !secret) {
     throw new PaypalError({
       httpStatus: 500,
       code: "MISSING_CONFIG",
@@ -43,7 +57,14 @@ async function accessToken(): Promise<string> {
         "PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET are not set in .env — copy them from developer.paypal.com → Apps & Credentials → Sandbox.",
     });
   }
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  return { id, secret };
+}
+
+async function accessToken(credsKind: CredsKind = "checkout"): Promise<string> {
+  const cached = tokenCache[credsKind];
+  if (cached && Date.now() < cached.expiresAt) return cached.value;
+  const { id, secret } = credentials(credsKind);
+  const basic = Buffer.from(`${id}:${secret}`).toString("base64");
   const res = await fetch(`${API_BASE}/v1/oauth2/token`, {
     method: "POST",
     headers: {
@@ -54,11 +75,11 @@ async function accessToken(): Promise<string> {
   });
   if (!res.ok) throw await normalizeError(res);
   const data = (await res.json()) as { access_token: string; expires_in: number };
-  cachedToken = {
+  tokenCache[credsKind] = {
     value: data.access_token,
     expiresAt: Date.now() + (data.expires_in - 300) * 1000,
   };
-  return cachedToken.value;
+  return tokenCache[credsKind]!.value;
 }
 
 async function normalizeError(res: Response): Promise<PaypalError> {
@@ -86,8 +107,9 @@ async function normalizeError(res: Response): Promise<PaypalError> {
 async function paypalFetch(
   path: string,
   init: { method?: string; body?: string; mockApplicationCode?: string } = {},
+  credsKind: CredsKind = "checkout",
 ) {
-  const token = await accessToken();
+  const token = await accessToken(credsKind);
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -134,7 +156,8 @@ export async function captureOrder(orderId: string, mockApplicationCode?: string
   return (await res.json()) as { id: string; status: string };
 }
 
-/** Payouts v1 — direct REST (the server SDK has no Payouts controller — verified). */
+/** Payouts v1 — direct REST (the server SDK has no Payouts controller — verified).
+ *  Uses the optional dedicated payouts credentials (US-country sandbox app). */
 export async function createPayout(receiver: string, amount: string, currency = "USD") {
   const res = await paypalFetch("/v1/payments/payouts", {
     method: "POST",
@@ -154,7 +177,7 @@ export async function createPayout(receiver: string, amount: string, currency = 
         },
       ],
     }),
-  });
+  }, "payouts");
   if (!res.ok) throw await normalizeError(res);
   return (await res.json()) as {
     batch_header: { batch_id: string; batch_status: string };
@@ -163,7 +186,7 @@ export async function createPayout(receiver: string, amount: string, currency = 
 
 /** Payouts v1 — poll a batch until every item is not PENDING/UNCLAIMED. */
 export async function getPayoutBatch(batchId: string) {
-  const res = await paypalFetch(`/v1/payments/payouts/${batchId}`);
+  const res = await paypalFetch(`/v1/payments/payouts/${batchId}`, {}, "payouts");
   if (!res.ok) throw await normalizeError(res);
   return (await res.json()) as {
     batch_header: { batch_id: string; batch_status: string };
