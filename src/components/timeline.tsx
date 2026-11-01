@@ -2,6 +2,7 @@ import type { EventRow } from "@/db/schema";
 
 const EVENT_LABELS: Record<string, { label: string; icon: string }> = {
   DRAFT_CREATED: { label: "Milestone created", icon: "○" },
+  ORDER_CREATED: { label: "PayPal order created", icon: "↳" },
   CHECKLIST_CREATED: { label: "AI acceptance checklist generated", icon: "✓" },
   FUNDED: { label: "Funded via PayPal (escrow)", icon: "$" },
   SUBMITTED: { label: "Proof submitted", icon: "↥" },

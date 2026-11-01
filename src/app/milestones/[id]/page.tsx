@@ -20,6 +20,8 @@ import Timeline from "@/components/timeline";
 import ChecklistGenerator from "@/components/checklist-generator";
 import FundButton from "@/components/fund-button";
 import ProofSubmitForm from "@/components/proof-submit-form";
+import ApprovalPanel from "@/components/approval-panel";
+import PayoutButton from "@/components/payout-button";
 import { getSessionUser } from "@/lib/session";
 import {
   MILESTONE_STATUSES,
@@ -161,6 +163,18 @@ export default async function MilestoneDetailPage({
     .orderBy(desc(events.createdAt))
     .all();
 
+  // Latest rejection notes (if any) for the freelancer's resubmission guidance.
+  const rejectionEvent = eventRows.find((e) => e.type === "REJECTED");
+  const rejectionNotes =
+    rejectionEvent && rejectionEvent.payloadJson
+      ? (() => {
+          try {
+            return (JSON.parse(rejectionEvent.payloadJson) as { notes?: string }).notes ?? null;
+          } catch {
+            return null;
+          }
+        })()
+      : null;
   const statusIndex = MILESTONE_STATUSES.indexOf(status);
   const hint = (NEXT_ACTION_HINTS[status]?.[user.role === "client" ? "client" : "freelancer"] ?? "") as string;
   const amountLabel = `$${(milestone.amountCents / 100).toFixed(2)} ${milestone.currency}`;
@@ -258,6 +272,12 @@ export default async function MilestoneDetailPage({
               ) : null}
             </section>
 
+            {status === "REJECTED" && rejectionNotes ? (
+              <section className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <h2 className="font-semibold text-red-800">Changes requested</h2>
+                <p className="mt-1 text-sm text-red-700 whitespace-pre-wrap">{rejectionNotes}</p>
+              </section>
+            ) : null}
             {checklist.length > 0 ? (
               <section className="rounded-lg border border-neutral-200 bg-white p-4">
                 <h2 className="font-semibold">
@@ -340,6 +360,30 @@ export default async function MilestoneDetailPage({
                     </ul>
                   </div>
                 ))}
+              </section>
+            ) : null}
+
+            {user.role === "client" && user.id === milestone.clientId && status === "EVALUATED" ? (
+              <section className="rounded-lg border border-neutral-200 bg-white p-4">
+                <h2 className="font-semibold">Final decision (human approval required)</h2>
+                <p className="mt-1 text-xs text-neutral-500">
+                  AI never moves money. Review the verdict above, then approve or request changes.
+                </p>
+                <div className="mt-3">
+                  <ApprovalPanel milestoneId={milestoneId} />
+                </div>
+              </section>
+            ) : null}
+
+            {user.role === "client" && user.id === milestone.clientId && status === "APPROVED" ? (
+              <section className="rounded-lg border border-neutral-200 bg-white p-4">
+                <h2 className="font-semibold">Send payout</h2>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Approved — release {amountLabel} to the freelancer via PayPal Payouts.
+                </p>
+                <div className="mt-3">
+                  <PayoutButton milestoneId={milestoneId} amountLabel={amountLabel} />
+                </div>
               </section>
             ) : null}
 

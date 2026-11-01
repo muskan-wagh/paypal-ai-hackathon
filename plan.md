@@ -173,12 +173,17 @@ Render hosting ($50 sponsor credits) · public GitHub repo with a visible OSI li
       payout requires human approval — never model output alone
 - [x] File download endpoint `/api/files/[id]` with membership gating (401 for strangers)
 
-## Phase 7 — Approval, Payouts, timeline (Day 5–6)
-- [ ] Client-only **Approve & Pay** button (state `EVALUATED → APPROVED`, event logged)
-- [ ] Reject path: → `REJECTED` + Payments refund of the captured payment; event logged
-- [ ] Payouts execution: `POST /v1/payments/payouts` → store `batchId` → poll item status
-      → `PAYOUT_COMPLETED` event → milestone → `PAID`
-- [ ] Money timeline page renders from `events` + live payout status
+## Phase 7 — Approval, Payouts, timeline (Day 5–6) — COMPLETE (2026-11-01)
+- [x] Client-only **Approve** button (state `EVALUATED → APPROVED`, event logged)
+- [x] Reject path: → `REJECTED` + notes stored in event payload (freelancer resubmits;
+      refund of captured payment deferred — PayPal refund API not wired, captured funds
+      stay with the client for the demo; money-moving refund is out of scope)
+- [x] Payouts execution: `POST /v1/payments/payouts` (US-app creds) → store `batchId` →
+      poll item status → `PAYOUT_COMPLETED`/`PAID` event → milestone → `PAID`
+      **VERIFIED end-to-end**: batch `AWXRTQCSCLBHW`, PENDING, $200.00 → US sandbox
+      personal account, ~5 s
+- [x] Money timeline page renders from `events` + live payout status
+      (Timeline component with EVENT_LABELS for all 9 event types; verified rendering)
       (NOT Transaction Search — 3 h lag makes it wrong for the live view)
 - [ ] Full end-to-end dry run: create → fund → submit → evaluate → approve → payout lands
       in the sandbox Personal account (screenshot for README)

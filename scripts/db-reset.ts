@@ -12,6 +12,15 @@ import { DDL } from "../src/db/ddl";
 import { writeEvent } from "../src/db/log";
 import * as schema from "../src/db/schema";
 
+// Load .env manually (tsx doesn't auto-load it like Next.js does).
+const envPath = path.join(process.cwd(), ".env");
+if (fs.existsSync(envPath)) {
+  for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
+}
+
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DB_PATH = path.join(DATA_DIR, "proofpay.db");
 
