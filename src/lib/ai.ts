@@ -43,7 +43,8 @@ export async function generateStructuredWithFallback(input: {
   models: string[];
   schema: z.ZodType;
   system: string;
-  prompt: string;
+  prompt?: string;
+  messages?: any[];
   temperature?: number;
 }): Promise<{
   model: string;
@@ -72,7 +73,7 @@ export async function generateStructuredWithFallback(input: {
           model: openrouter(model),
           schema: input.schema,
           system: input.system,
-          prompt: input.prompt,
+          ...(input.messages ? { messages: input.messages } : { prompt: input.prompt ?? "" }),
           temperature: input.temperature ?? 0.2,
         });
         const u = usage as { inputTokens?: number | null; outputTokens?: number | null; totalTokens?: number | null };

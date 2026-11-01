@@ -19,6 +19,7 @@ import StatusChip from "@/components/status-chip";
 import Timeline from "@/components/timeline";
 import ChecklistGenerator from "@/components/checklist-generator";
 import FundButton from "@/components/fund-button";
+import ProofSubmitForm from "@/components/proof-submit-form";
 import { getSessionUser } from "@/lib/session";
 import {
   MILESTONE_STATUSES,
@@ -228,6 +229,31 @@ export default async function MilestoneDetailPage({
                     currency={milestone.currency}
                     amountLabel={amountLabel}
                   />
+                </div>
+              ) : null}
+              {user.role === "freelancer" && user.id === milestone.freelancerId && (status === "FUNDED" || status === "REJECTED") ? (
+                <div className="mt-4 border-t border-neutral-100 pt-3">
+                  <p className="text-sm font-medium">
+                    {status === "REJECTED" ? "Resubmit proof (address the feedback above)" : "Submit proof of delivery"}
+                  </p>
+                  <div className="mt-2">
+                    <ProofSubmitForm milestoneId={milestoneId} />
+                  </div>
+                </div>
+              ) : null}
+              {user.role === "freelancer" && user.id === milestone.freelancerId && status === "SUBMITTED" ? (
+                <div className="mt-4 border-t border-neutral-100 pt-3">
+                  <p className="text-sm text-neutral-600">Evaluation failed or still running. Retry the AI evaluation:</p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await fetch(`/api/milestones/${milestoneId}/evaluate`, { method: "POST" });
+                      window.location.reload();
+                    }}
+                    className="mt-2 rounded border border-neutral-300 bg-white px-3 py-1 text-xs"
+                  >
+                    Retry AI evaluation
+                  </button>
                 </div>
               ) : null}
             </section>

@@ -155,17 +155,23 @@ Render hosting ($50 sponsor credits) · public GitHub repo with a visible OSI li
 - [x] `FUNDED` / `CAPTURED` events written; timeline updates (FUNDED written only on real
       capture success success — verified via negative tests that nothing fires early)
 
-## Phase 6 — Proof submission + AI evaluation (Day 4–5)
-- [ ] Freelancer view: upload images/PDF (≤ 5 MB, BLOB in DB) + short notes
-- [ ] PDF → text extraction server-side; images passed directly to the pinned
-      **vision-capable** OpenRouter model (free tier verified available; if the pinned
-      free model rejects images or is rate-limited, the fallback chain routes to the next)
-- [ ] AI call #2 — proof evaluation vs checklist: Zod `EvaluationSchema` → per-item
+## Phase 6 — Proof submission + AI evaluation (Day 4–5) — COMPLETE (2026-11-01)
+- [x] Freelancer view: upload images/PDF (≤ 5 MB, BLOB in DB) + short notes
+      (multipart route + `ProofSubmitForm` client component with file picker; verified:
+      378-byte PNG stored as BLOB, served byte-identical via `/api/files/[id]` to members)
+- [x] PDF → text extraction server-side (unpdf); images passed directly to the pinned
+      vision-capable OpenRouter model (free tier verified available; fallback chain
+      routes on 429/parse failure — verified end-to-end)
+- [x] AI call #2 — proof evaluation vs checklist: Zod `EvaluationSchema` → per-item
       `pass|partial|fail` + explanation, overall score 0–100, written summary
-- [ ] Store `evaluations`/`eitems` + `rawJson`; milestone → `EVALUATED`
-- [ ] Verdict UI: per-item cards with explanations (client and freelancer both see it)
-- [ ] Guardrails verified in code review: AI has **no PayPal credentials and no tools**;
+      (verified: 4-item checklist evaluated → 0/100 fail on a placeholder image;
+      all items correctly marked fail with concrete visual explanations)
+- [x] Store `evaluations`/`eitems` + `rawJson`; milestone → `EVALUATED`
+      (verified: milestone 2 → EVALUATED, EVALUATED event logged with model + score)
+- [x] Verdict UI: per-item cards with explanations (client and freelancer both see it)
+- [x] Guardrails verified in code review: AI has **no PayPal credentials and no tools**;
       payout requires human approval — never model output alone
+- [x] File download endpoint `/api/files/[id]` with membership gating (401 for strangers)
 
 ## Phase 7 — Approval, Payouts, timeline (Day 5–6)
 - [ ] Client-only **Approve & Pay** button (state `EVALUATED → APPROVED`, event logged)
