@@ -17,6 +17,7 @@ import {
 import AppHeader from "@/components/app-header";
 import StatusChip from "@/components/status-chip";
 import Timeline from "@/components/timeline";
+import ChecklistGenerator from "@/components/checklist-generator";
 import { getSessionUser } from "@/lib/session";
 import {
   MILESTONE_STATUSES,
@@ -207,6 +208,11 @@ export default async function MilestoneDetailPage({
                 {milestone.deadline ? ` · due ${milestone.deadline}` : ""}
               </p>
               {hint ? <p className="mt-3 text-xs text-blue-700">{hint}</p> : null}
+              {user.role === "client" && user.id === milestone.clientId && status === "DRAFT" ? (
+                <div className="mt-4 border-t border-neutral-100 pt-3">
+                  <ChecklistGenerator milestoneId={milestoneId} />
+                </div>
+              ) : null}
             </section>
 
             {checklist.length > 0 ? (

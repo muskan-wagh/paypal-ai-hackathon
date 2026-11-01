@@ -1,13 +1,10 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateObject } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-
-/**
- * Spike: verify the OpenRouter key + the Zod structured-output path we will use
- * for checklist generation and proof evaluation. Tries the pinned model first,
- * then every model in AI_FALLBACKS.
- */
+import {
+  AIFailedError,
+  generateStructuredWithFallback,
+  modelsFromEnv,
+} from "@/lib/ai";
 
 const SpikeVerdict = z.object({
   verdict: z.enum(["pass", "partial", "fail"]),
@@ -24,84 +21,28 @@ const PROMPT = [
   'Submitted proof text: "Finished the login page; the attached screenshot shows my form with email and password fields and HTML5 validation enabled."',
 ].join("\n\n");
 
-type Usage = {
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-  totalTokens?: number | null;
-};
-
-/** True when the OpenRouter error looks like a retryable rate limit (status 429). */
-function isRateLimit(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const cast = error as { statusCode?: unknown; message?: string };
-  if (cast.statusCode === 429) return true;
-  return /\b429\b|rate.?limited/i.test(cast.message ?? "");
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 export async function GET() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { ok: false, code: "MISSING_OPENROUTER_KEY", message: "OPENROUTER_API_KEY is not set in .env" },
-      { status: 500 },
-    );
-  }
-
-  const models = [
-    process.env.AI_MODEL ?? "",
-    ...(process.env.AI_FALLBACKS ?? "").split(",").map((m) => m.trim()),
-  ].filter(Boolean);
-  if (models.length === 0) {
-    return NextResponse.json(
-      { ok: false, code: "NO_MODEL_PINNED", message: "Set AI_MODEL in .env (e.g. google/gemma-4-31b-it:free)" },
-      { status: 500 },
-    );
-  }
-
-  const openrouter = createOpenRouter({ apiKey });
-  const attempts: Array<{ model: string; error: string; ms: number }> = [];
-
-  for (const model of models) {
-    // Free models share an upstream pool that flaps between 429s — one bounded
-    // retry per model before falling through to the next model in the chain.
-    for (let tryNumber = 0; tryNumber < 2; tryNumber++) {
-      const started = Date.now();
-      try {
-        const { object, usage } = await generateObject({
-          model: openrouter(model),
-          schema: SpikeVerdict,
-          system: SYSTEM,
-          prompt: PROMPT,
-        });
-        const u: Usage = usage as Usage;
-        return NextResponse.json({
-          ok: true,
-          model,
-          object,
-          tokens: {
-            input: u.inputTokens ?? null,
-            output: u.outputTokens ?? null,
-            total: u.totalTokens ?? null,
-          },
-          fallbackAttempts: attempts.length > 0 ? attempts : undefined,
-        });
-      } catch (error) {
-        const ms = Date.now() - started;
-        attempts.push({
-          model,
-          error: error instanceof Error ? `${error.name}: ${error.message.slice(0, 300)}` : String(error).slice(0, 300),
-          ms,
-        });
-        if (tryNumber === 0 && isRateLimit(error)) {
-          await sleep(2000);
-          continue;
-        }
-        break; // non-retryable failure or single retry spent → next model
-      }
+  try {
+    const result = await generateStructuredWithFallback({
+      models: modelsFromEnv(),
+      schema: SpikeVerdict,
+      system: SYSTEM,
+      prompt: PROMPT,
+    });
+    return NextResponse.json({
+      ok: true,
+      model: result.model,
+      object: result.object,
+      tokens: result.tokens,
+      fallbackAttempts: result.attempts.length > 0 ? result.attempts : undefined,
+    });
+  } catch (error) {
+    if (error instanceof AIFailedError) {
+      return NextResponse.json({ ok: false, code: "AI_ALL_MODELS_FAILED", attempts: error.attempts }, { status: 502 });
     }
+    return NextResponse.json(
+      { ok: false, code: "UNHANDLED", message: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    );
   }
-
-  return NextResponse.json({ ok: false, code: "AI_ALL_MODELS_FAILED", attempts }, { status: 502 });
 }

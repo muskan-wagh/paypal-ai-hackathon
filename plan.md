@@ -126,14 +126,18 @@ Render hosting ($50 sponsor credits) · public GitHub repo with a visible OSI li
 
 ## Phase 4 — Milestone creation + AI checklist (Day 3)
 - [ ] Client form: title, brief, amount (integer cents), currency, deadline, freelancer select
-- [ ] AI call #1 — checklist generation (**via `@openrouter/ai-sdk-provider`**):
+- [x] AI call #1 — checklist generation (**via `@openrouter/ai-sdk-provider`**):
       `generateObject` + Zod `ChecklistSchema` → 4–8 items
       `{ title, acceptanceCriteria, checkType: visual|document|scope|quality }`,
       low temperature, validated, one retry on invalid (Response Healing plugin
       auto-repairs malformed JSON — leave the provider default ON);
-      no free-text chat
-- [ ] Insert rows to `checklist_items`; milestone → `CHECKLISTED`; `events` logged
-- [ ] Checklist rendered in milestone detail for both roles
+      no free-text chat —
+      **END-TO-END VERIFIED** (shared fallback runner `src/lib/ai.ts` w/ 429-retry;
+      live run: nemotron generated 6 items; transient multi-model failure + retry
+      also verified — state stayed DRAFT on failure, advanced only on success)
+- [x] Insert rows to `checklist_items`; milestone → `CHECKLISTED`; `events` logged
+      (role/state guards 401/403/409 verified; `CHECKLIST_CREATED` written by actor `ai`)
+- [x] Checklist rendered in milestone detail for both roles
 - [ ] "Raw AI output" viewer toggle (stores full model JSON) — traceability on camera
 
 ## Phase 5 — Funding flow (Day 3–4)
