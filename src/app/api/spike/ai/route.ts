@@ -30,6 +30,16 @@ type Usage = {
   totalTokens?: number | null;
 };
 
+/** True when the OpenRouter error looks like a retryable rate limit (status 429). */
+function isRateLimit(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const cast = error as { statusCode?: unknown; message?: string };
+  if (cast.statusCode === 429) return true;
+  return /\b429\b|rate.?limited/i.test(cast.message ?? "");
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function GET() {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -51,32 +61,45 @@ export async function GET() {
   }
 
   const openrouter = createOpenRouter({ apiKey });
-  const attempts: Array<{ model: string; error: string }> = [];
+  const attempts: Array<{ model: string; error: string; ms: number }> = [];
 
   for (const model of models) {
-    try {
-      const { object, usage } = await generateObject({
-        model: openrouter(model),
-        schema: SpikeVerdict,
-        system: SYSTEM,
-        prompt: PROMPT,
-      });
-      const u: Usage = usage as Usage;
-      return NextResponse.json({
-        ok: true,
-        model,
-        object,
-        tokens: {
-          input: u.inputTokens ?? null,
-          output: u.outputTokens ?? null,
-          total: u.totalTokens ?? null,
-        },
-      });
-    } catch (error) {
-      attempts.push({
-        model,
-        error: error instanceof Error ? `${error.name}: ${error.message.slice(0, 300)}` : String(error).slice(0, 300),
-      });
+    // Free models share an upstream pool that flaps between 429s — one bounded
+    // retry per model before falling through to the next model in the chain.
+    for (let tryNumber = 0; tryNumber < 2; tryNumber++) {
+      const started = Date.now();
+      try {
+        const { object, usage } = await generateObject({
+          model: openrouter(model),
+          schema: SpikeVerdict,
+          system: SYSTEM,
+          prompt: PROMPT,
+        });
+        const u: Usage = usage as Usage;
+        return NextResponse.json({
+          ok: true,
+          model,
+          object,
+          tokens: {
+            input: u.inputTokens ?? null,
+            output: u.outputTokens ?? null,
+            total: u.totalTokens ?? null,
+          },
+          fallbackAttempts: attempts.length > 0 ? attempts : undefined,
+        });
+      } catch (error) {
+        const ms = Date.now() - started;
+        attempts.push({
+          model,
+          error: error instanceof Error ? `${error.name}: ${error.message.slice(0, 300)}` : String(error).slice(0, 300),
+          ms,
+        });
+        if (tryNumber === 0 && isRateLimit(error)) {
+          await sleep(2000);
+          continue;
+        }
+        break; // non-retryable failure or single retry spent → next model
+      }
     }
   }
 
