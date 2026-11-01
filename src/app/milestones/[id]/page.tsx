@@ -18,6 +18,7 @@ import AppHeader from "@/components/app-header";
 import StatusChip from "@/components/status-chip";
 import Timeline from "@/components/timeline";
 import ChecklistGenerator from "@/components/checklist-generator";
+import FundButton from "@/components/fund-button";
 import { getSessionUser } from "@/lib/session";
 import {
   MILESTONE_STATUSES,
@@ -161,6 +162,8 @@ export default async function MilestoneDetailPage({
 
   const statusIndex = MILESTONE_STATUSES.indexOf(status);
   const hint = (NEXT_ACTION_HINTS[status]?.[user.role === "client" ? "client" : "freelancer"] ?? "") as string;
+  const amountLabel = `$${(milestone.amountCents / 100).toFixed(2)} ${milestone.currency}`;
+  const paypalClientId = process.env.PAYPAL_CLIENT_ID ?? "";
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -211,6 +214,20 @@ export default async function MilestoneDetailPage({
               {user.role === "client" && user.id === milestone.clientId && status === "DRAFT" ? (
                 <div className="mt-4 border-t border-neutral-100 pt-3">
                   <ChecklistGenerator milestoneId={milestoneId} />
+                </div>
+              ) : null}
+              {user.role === "client" && user.id === milestone.clientId && status === "CHECKLISTED" ? (
+                <div className="mt-4 border-t border-neutral-100 pt-3">
+                  <p className="text-sm">
+                    Fund with PayPal <span className="font-semibold">{amountLabel}</span> — held in PayPal escrow
+                    until you approve the proof.
+                  </p>
+                  <FundButton
+                    milestoneId={milestoneId}
+                    paypalClientId={paypalClientId}
+                    currency={milestone.currency}
+                    amountLabel={amountLabel}
+                  />
                 </div>
               ) : null}
             </section>

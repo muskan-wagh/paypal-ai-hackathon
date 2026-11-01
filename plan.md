@@ -140,12 +140,20 @@ Render hosting ($50 sponsor credits) · public GitHub repo with a visible OSI li
 - [x] Checklist rendered in milestone detail for both roles
 - [ ] "Raw AI output" viewer toggle (stores full model JSON) — traceability on camera
 
-## Phase 5 — Funding flow (Day 3–4)
-- [ ] Client presses **Fund milestone** → server creates the PayPal order →
+## Phase 5 — Funding flow (Day 3–4) — CODE COMPLETE (happy-path capture awaits user's popup click)
+- [x] Client presses **Fund milestone** → server creates the PayPal order →
       `PayPalButtons` popup shows the **real sandbox approval window**
-- [ ] `onApprove` → server capture (Payments controller) → store `paypalCaptureId` → `FUNDED`
-- [ ] Decline path: `INSTRUMENT_DECLINED` (or real decline) → friendly retry UI, not a raw JSON dump
-- [ ] `FUNDED` / `CAPTURED` events written; timeline updates
+      (milestone-aware `POST /api/milestones/[id]/orders`; verified: real $250.00 order
+      `46024936NC577245A` CREATED + `ORDER_CREATED` event; freelancer → 403)
+- [x] `onApprove` → server capture → store `paypalCaptureId` → `FUNDED` —
+      capture route live with **order-integrity checks** (server verifies the approved
+      order's amount/currency == milestone before capturing — $2-order attack blocked,
+      `AMOUNT_MISMATCH` verified; `ORDER_NOT_APPROVED` 409; transition asserted)
+- [x] Decline path: `INSTRUMENT_DECLINED` (or real decline) → friendly retry UI, not a raw
+      JSON dump (`fund-button.tsx` friendly-error mapper; mocked decline verified through
+      the real capture route — state stays CHECKLISTED, no capture id)
+- [x] `FUNDED` / `CAPTURED` events written; timeline updates (FUNDED written only on real
+      capture success success — verified via negative tests that nothing fires early)
 
 ## Phase 6 — Proof submission + AI evaluation (Day 4–5)
 - [ ] Freelancer view: upload images/PDF (≤ 5 MB, BLOB in DB) + short notes

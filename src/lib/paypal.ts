@@ -127,22 +127,39 @@ async function paypalFetch(
   });
 }
 
-/** Orders v2 — create a $X order for the spike funding flow. */
-export async function createOrder(input: { amount: string; currency: string }) {
+/** Orders v2 — create an order for a milestone funding flow.
+ *  `referenceId` ties the PayPal order to our milestone record. */
+export async function createOrder(input: { amount: string; currency: string; referenceId?: string }) {
   const res = await paypalFetch("/v2/checkout/orders", {
     method: "POST",
     body: JSON.stringify({
       intent: "CAPTURE",
       purchase_units: [
         {
+          ...(input.referenceId ? { reference_id: input.referenceId } : {}),
           amount: { currency_code: input.currency, value: input.amount },
-          description: "ProofPay spike milestone",
+          description: "ProofPay milestone",
         },
       ],
     }),
   });
   if (!res.ok) throw await normalizeError(res);
   return (await res.json()) as { id: string; status: string };
+}
+
+/** Orders v2 — read an order back (used to verify amount + approval before capture). */
+export async function getOrder(orderId: string) {
+  const res = await paypalFetch(`/v2/checkout/orders/${orderId}`);
+  if (!res.ok) throw await normalizeError(res);
+  return (await res.json()) as {
+    id: string;
+    status: string;
+    payer?: { email_address?: string };
+    purchase_units?: Array<{
+      amount?: { value: string; currency_code: string };
+      reference_id?: string;
+    }>;
+  };
 }
 
 /** Payments — capture an approved order. `mockApplicationCode` runs negative testing.
