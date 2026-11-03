@@ -73,17 +73,17 @@ export default async function EarningsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Batch</TableHead>
-                <TableHead>Receiver</TableHead>
+                <TableHead className="hidden sm:table-cell">Receiver</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Status</TableHead>
-                <TableHead className="text-right">Date</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {myPayouts.map((row) => (
                 <TableRow key={row.payout.id}>
                   <TableCell className="font-mono text-xs text-neutral-600">{row.payout.batchId}</TableCell>
-                  <TableCell className="text-xs text-neutral-500">{row.payout.receiver}</TableCell>
+                  <TableCell className="hidden text-xs text-neutral-500 sm:table-cell">{row.payout.receiver}</TableCell>
                   <TableCell className="text-right font-semibold">
                     {formatMoney(row.payout.amountCents, row.currency)}
                   </TableCell>
@@ -92,7 +92,7 @@ export default async function EarningsPage() {
                       {row.payout.status}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right text-xs text-neutral-400">
+                  <TableCell className="text-right text-xs text-neutral-400 hidden sm:table-cell">
                     {formatTimestamp(row.payout.createdAt)}
                   </TableCell>
                 </TableRow>

@@ -66,10 +66,10 @@ export default async function ClientPaymentsPage() {
               <TableRow>
                 <TableHead>Milestone</TableHead>
                 <TableHead>Batch</TableHead>
-                <TableHead>Receiver</TableHead>
+                <TableHead className="hidden md:table-cell">Receiver</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Status</TableHead>
-                <TableHead className="text-right">Sent</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Sent</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -77,7 +77,7 @@ export default async function ClientPaymentsPage() {
                 <TableRow key={row.payout.id}>
                   <TableCell className="font-medium text-neutral-800">{row.milestoneTitle}</TableCell>
                   <TableCell className="font-mono text-xs text-neutral-500">{row.payout.batchId}</TableCell>
-                  <TableCell className="text-xs text-neutral-500">{row.payout.receiver}</TableCell>
+                  <TableCell className="hidden text-xs text-neutral-500 md:table-cell">{row.payout.receiver}</TableCell>
                   <TableCell className="text-right font-semibold">
                     {formatMoney(row.payout.amountCents, row.currency)}
                   </TableCell>
@@ -86,7 +86,7 @@ export default async function ClientPaymentsPage() {
                       {row.payout.status}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right text-xs text-neutral-400">
+                  <TableCell className="text-right text-xs text-neutral-400 hidden sm:table-cell">
                     {formatTimestamp(row.payout.createdAt)}
                   </TableCell>
                 </TableRow>
@@ -111,8 +111,8 @@ export default async function ClientPaymentsPage() {
               <TableRow>
                 <TableHead>Milestone</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Order</TableHead>
-                <TableHead>Capture</TableHead>
+                <TableHead className="hidden sm:table-cell">Order</TableHead>
+                <TableHead className="hidden md:table-cell">Capture</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
               </TableRow>
             </TableHeader>
@@ -123,10 +123,10 @@ export default async function ClientPaymentsPage() {
                   <TableCell>
                     <span className="text-xs font-semibold text-neutral-600">{m.status}</span>
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-neutral-500">
+                  <TableCell className="hidden font-mono text-xs text-neutral-500 sm:table-cell">
                     {m.paypalOrderId ?? "—"}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-neutral-500">
+                  <TableCell className="hidden font-mono text-xs text-neutral-500 md:table-cell">
                     {m.paypalCaptureId ?? "—"}
                   </TableCell>
                   <TableCell className="text-right font-semibold">

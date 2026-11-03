@@ -159,7 +159,7 @@ export default function DashboardShell({
           <div className="flex items-center gap-3">
             <Badge
               variant="outline"
-              className={`rounded-full ${
+              className={`hidden rounded-full sm:inline-flex ${
                 user.role === "client"
                   ? "border-blue-200 bg-blue-50 text-blue-700"
                   : "border-emerald-200 bg-emerald-50 text-emerald-700"

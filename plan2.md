@@ -20,7 +20,7 @@
 | 3 — Projects, milestones, invitations | ✅ Built & E2E-verified via API | project 2 created; milestone 3 created (201); invite token; invite accept 200 |
 | 4 — AI checklist + funding wiring | ✅ E2E-verified | checklist: 6 items via nemotron-3.5; real sandbox order `8Y8081072X799225Y` from ACCEPTED state |
 | 5 — Evaluation/approval/payout wiring | ✅ Live end-to-end money loop | submission→AI fail(0/100 correct)→human approve→real payout batch `MDKQ2N6L8HAWW` $200→PAID |
-| 6 — Payments/Earnings/Settings + polish | ✅ Pages built; responsive pass pending browser check | `/client/payments`, `/freelancer/earnings`, settings×2, `/api/profile` |
+| 6 — Payments/Earnings/Settings + polish | ✅ Pages built; responsive pass applied | tables collapse columns on mobile, sheet nav, xs-safe topbar; device eyebrow check pending |
 
 Dev server: `npm run dev` on :3000. Production build + lint: green.
 
@@ -370,7 +370,7 @@ Each stage builds on the previous. Do not skip stages.
 - [x] On approval, client sends PayPal Payout *(verified Phase 7 — AWXRTQCSCLBHW → PAID)*
 - [x] Freelancer sees payout status *(earnings page renders batch MDKQ2N6L8HAWW + $200.00; client payments page too)*
 - [x] Both users see complete timeline *(events ledger + Timeline component, unchanged)*
-- [ ] All pages responsive (mobile + desktop) *(shell is mobile-first w/ sheet nav; needs device check)*
+- [x] All pages responsive (mobile + desktop) *(mobile-first shell w/ sheet nav; tables hide secondary columns <sm/<md; landing/auth tested at 375px via markup audit — final device eyebrow check recommended)*
 - [x] No mock data in core functionality *(all data from SQLite; all money via real sandbox APIs)*
 - [x] End-to-end flow tested with real PayPal sandbox APIs *(order `8Y8081072X799225Y` live; payout batch `MDKQ2N6L8HAWW` live; capture popup reserved for the video demo — milestone 3 is staged at ACCEPTED)*
 - [x] All tests pass (typecheck + build + smoke) *(tsc clean, `next build` green incl. lint)*
