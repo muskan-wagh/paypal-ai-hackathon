@@ -3,6 +3,8 @@ import type { MilestoneStatus } from "@/lib/state-machine";
 const STATUS_STYLES: Record<MilestoneStatus, string> = {
   DRAFT: "bg-neutral-100 text-neutral-600 border-neutral-200",
   CHECKLISTED: "bg-sky-50 text-sky-700 border-sky-200",
+  INVITED: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  ACCEPTED: "bg-blue-50 text-blue-700 border-blue-200",
   FUNDED: "bg-emerald-50 text-emerald-700 border-emerald-200",
   SUBMITTED: "bg-amber-50 text-amber-700 border-amber-200",
   EVALUATED: "bg-violet-50 text-violet-700 border-violet-200",

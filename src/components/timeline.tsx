@@ -1,16 +1,23 @@
 import type { EventRow } from "@/db/schema";
 
-const EVENT_LABELS: Record<string, { label: string; icon: string }> = {
+export const EVENT_LABELS: Record<string, { label: string; icon: string }> = {
   DRAFT_CREATED: { label: "Milestone created", icon: "○" },
   ORDER_CREATED: { label: "PayPal order created", icon: "↳" },
   CHECKLIST_CREATED: { label: "AI acceptance checklist generated", icon: "✓" },
+  INVITED: { label: "Freelancer invited", icon: "✉" },
+  ACCEPTED: { label: "Freelancer accepted", icon: "✓" },
   FUNDED: { label: "Funded via PayPal (escrow)", icon: "$" },
   SUBMITTED: { label: "Proof submitted", icon: "↥" },
   EVALUATED: { label: "AI evaluation complete", icon: "◈" },
   APPROVED: { label: "Client approved", icon: "✓" },
   REJECTED: { label: "Changes requested", icon: "↻" },
+  DECLINED: { label: "Invitation declined", icon: "↻" },
   PAID: { label: "Payout sent via PayPal", icon: "$" },
 };
+
+export function eventLabel(type: string): { label: string; icon: string } {
+  return EVENT_LABELS[type] ?? { label: type, icon: "•" };
+}
 
 function relativeTime(ms: number): string {
   const diff = Date.now() - ms;

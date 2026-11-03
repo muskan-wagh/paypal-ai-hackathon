@@ -2,7 +2,8 @@
  * ProofPay milestone state machine — enforced SERVER-SIDE only (route handlers
  * and server actions). The client never receives transition logic.
  *
- * DRAFT ──(AI checklist saved)──▶ CHECKLISTED ──(client funds via PayPal)──▶ FUNDED
+ * DRAFT ──(AI checklist saved)──▶ CHECKLISTED ──(invite sent)──▶ INVITED
+ *   ──(freelancer accepts)──▶ ACCEPTED ──(client funds via PayPal)──▶ FUNDED
  *   ──(freelancer submits proof)──▶ SUBMITTED ──(AI evaluates)──▶ EVALUATED
  *   ──(client approves / rejects)──▶ APPROVED | REJECTED ──(PayPal Payouts sent)──▶ PAID
  *
@@ -12,6 +13,8 @@
 export const MILESTONE_STATUSES = [
   "DRAFT",
   "CHECKLISTED",
+  "INVITED",
+  "ACCEPTED",
   "FUNDED",
   "SUBMITTED",
   "EVALUATED",
@@ -26,7 +29,9 @@ type TransitionMap = Partial<Record<MilestoneStatus, MilestoneStatus[]>>;
 
 export const ALLOWED_TRANSITIONS: TransitionMap = {
   DRAFT: ["CHECKLISTED"],
-  CHECKLISTED: ["FUNDED"],
+  CHECKLISTED: ["INVITED"],
+  INVITED: ["ACCEPTED"],
+  ACCEPTED: ["FUNDED"],
   FUNDED: ["SUBMITTED"],
   SUBMITTED: ["EVALUATED"],
   EVALUATED: ["APPROVED", "REJECTED"],

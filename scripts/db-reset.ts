@@ -1,7 +1,10 @@
 /**
  * Reset + seed the demo database: `npm run db:reset`
- * Maya (client) and Dana (freelancer), one DRAFT milestone and one FUNDED
- * milestone (with checklist + events) so the demo can start mid-flow.
+ * Real demo accounts (bcrypt passwords) + one project with two milestones:
+ * one DRAFT (full flow: checklist → invite → accept → fund) and one FUNDED
+ * (with checklist + demo PayPal ids) so the demo can start mid-flow.
+ *
+ * Demo logins (shown on the login page): maya@proofpay.dev / dana@proofpay.dev — "demo1234"
  */
 import Database from "better-sqlite3";
 import fs from "node:fs";
@@ -10,6 +13,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq } from "drizzle-orm";
 import { DDL } from "../src/db/ddl";
 import { writeEvent } from "../src/db/log";
+import { hashPassword } from "../src/lib/password";
 import * as schema from "../src/db/schema";
 
 // Load .env manually (tsx doesn't auto-load it like Next.js does).
@@ -38,13 +42,29 @@ const now = Date.now();
 const day = 24 * 60 * 60 * 1000;
 
 // Dana's payout email = the configured sandbox payout receiver when available.
-const danaEmail =
+// (This is her PayPal sandbox account — NOT her app login email.)
+const danaPayoutEmail =
   process.env.PAYPAL_PAYOUT_RECEIVER?.trim() || "dana@personal.example.com";
+const DEMO_PASSWORD = "demo1234";
 
 db.insert(schema.users)
   .values([
-    { name: "Maya Chen", role: "client", sandboxEmail: null, createdAt: now },
-    { name: "Dana Rivera", role: "freelancer", sandboxEmail: danaEmail, createdAt: now },
+    {
+      name: "Maya Chen",
+      role: "client",
+      email: "maya@proofpay.dev",
+      passwordHash: hashPassword(DEMO_PASSWORD),
+      sandboxEmail: null,
+      createdAt: now,
+    },
+    {
+      name: "Dana Rivera",
+      role: "freelancer",
+      email: "dana@proofpay.dev",
+      passwordHash: hashPassword(DEMO_PASSWORD),
+      sandboxEmail: danaPayoutEmail,
+      createdAt: now,
+    },
   ])
   .run();
 
@@ -52,11 +72,26 @@ const client = db.select().from(schema.users).where(eq(schema.users.name, "Maya 
 const freelancer = db.select().from(schema.users).where(eq(schema.users.name, "Dana Rivera")).get();
 if (!client || !freelancer) throw new Error("seed: users missing");
 
+const project = db
+  .insert(schema.projects)
+  .values({
+    clientId: client.id,
+    title: "Brand & marketing site",
+    description:
+      "Refresh the ProofPay marketing surface: hero redesign, login flow UI, and " +
+      "responsive polish across the public pages.",
+    createdAt: now,
+    updatedAt: now,
+  })
+  .returning()
+  .get();
+
 const draft = db
   .insert(schema.milestones)
   .values({
     clientId: client.id,
-    freelancerId: freelancer.id,
+    freelancerId: null, // assigned when the freelancer accepts the invite
+    projectId: project.id,
     title: "Landing page hero redesign",
     brief:
       "Refresh the marketing site hero: new headline treatment, one supporting illustration, " +
@@ -82,6 +117,7 @@ const funded = db
   .values({
     clientId: client.id,
     freelancerId: freelancer.id,
+    projectId: project.id,
     title: "Login screen with validation",
     brief:
       "Build the app login screen: email + password form, client-side validation, error " +
@@ -109,6 +145,18 @@ writeEvent(db, {
   type: "CHECKLIST_CREATED",
   actor: "ai",
   payload: { model: process.env.AI_MODEL ?? "seed-demo", items: 4 },
+});
+writeEvent(db, {
+  milestoneId: funded.id,
+  type: "ACCEPTED",
+  actor: "Dana Rivera",
+  payload: { seeded: true },
+});
+writeEvent(db, {
+  milestoneId: funded.id,
+  type: "FUNDED",
+  actor: "Maya Chen",
+  payload: { amountCents: funded.amountCents, demoOrderId: "DEMO-ORDER-SEED01" },
 });
 
 const checklist = [
@@ -147,18 +195,12 @@ checklist.forEach((item, index) => {
     .run();
 });
 
-writeEvent(db, {
-  milestoneId: funded.id,
-  type: "FUNDED",
-  actor: "Maya Chen",
-  payload: { amountCents: funded.amountCents, demoOrderId: "DEMO-ORDER-SEED01" },
-});
-
 const pluckCount = (sql: string) => sqlite.prepare(sql).pluck().get() as number;
 console.log(
   "db reset complete:",
   JSON.stringify({
     users: pluckCount("SELECT COUNT(*) FROM users"),
+    projects: pluckCount("SELECT COUNT(*) FROM projects"),
     milestones: pluckCount("SELECT COUNT(*) FROM milestones"),
     checklistItems: pluckCount("SELECT COUNT(*) FROM checklist_items"),
     events: pluckCount("SELECT COUNT(*) FROM events"),

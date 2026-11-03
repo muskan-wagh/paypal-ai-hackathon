@@ -1,12 +1,29 @@
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-/** Personas only — no real auth. A "user" is either the client or the freelancer. */
+/**
+ * Real registration-based auth (bcrypt hashes) on top of the HMAC cookie session.
+ * `sandbox_email` is the PayPal sandbox account that receives payouts — distinct
+ * from the app login `email`.
+ */
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   role: text("role").notNull(), // 'client' | 'freelancer'
+  email: text("email"), // login email (unique — partial unique index, see ddl.ts)
+  passwordHash: text("password_hash"),
   sandboxEmail: text("sandbox_email"), // PayPal sandbox account (receives payouts)
   createdAt: integer("created_at").notNull(),
+});
+
+export const projects = sqliteTable("projects", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
 });
 
 export const milestones = sqliteTable("milestones", {
@@ -15,6 +32,7 @@ export const milestones = sqliteTable("milestones", {
     .notNull()
     .references(() => users.id),
   freelancerId: integer("freelancer_id").references(() => users.id),
+  projectId: integer("project_id").references(() => projects.id),
   title: text("title").notNull(),
   brief: text("brief").notNull(),
   amountCents: integer("amount_cents").notNull(),
@@ -26,6 +44,26 @@ export const milestones = sqliteTable("milestones", {
   paypalCaptureId: text("paypal_capture_id"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
+});
+
+/** Per-milestone invite link (crypto-random token). Freelancer accepts → milestone. */
+export const invitations = sqliteTable("invitations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  milestoneId: integer("milestone_id")
+    .notNull()
+    .references(() => milestones.id),
+  inviterId: integer("inviter_id")
+    .notNull()
+    .references(() => users.id),
+  inviteeEmail: text("invitee_email").notNull(), // lowercased
+  inviteeId: integer("invitee_id").references(() => users.id), // set on accept
+  token: text("token").notNull().unique(), // crypto-random, URL-safe
+  status: text("status").notNull().default("pending"), // pending | accepted | declined | expired
+  message: text("message"),
+  createdAt: integer("created_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  acceptedAt: integer("accepted_at"),
+  declinedAt: integer("declined_at"),
 });
 
 export const checklistItems = sqliteTable("checklist_items", {
@@ -116,7 +154,7 @@ export const events = sqliteTable("events", {
   milestoneId: integer("milestone_id")
     .notNull()
     .references(() => milestones.id),
-  /** e.g. CHECKLIST_CREATED | FUNDED | SUBMITTED | EVALUATED | APPROVED | PAID */
+  /** e.g. DRAFT_CREATED | CHECKLIST_CREATED | INVITED | ACCEPTED | FUNDED … */
   type: text("type").notNull(),
   actor: text("actor").notNull(), // user name, 'system' or 'ai'
   payloadJson: text("payload_json").notNull().default("{}"),
@@ -124,6 +162,8 @@ export const events = sqliteTable("events", {
 });
 
 export type User = typeof users.$inferSelect;
+export type Project = typeof projects.$inferSelect;
+export type Invitation = typeof invitations.$inferSelect;
 export type Milestone = typeof milestones.$inferSelect;
 export type ChecklistItem = typeof checklistItems.$inferSelect;
 export type Submission = typeof submissions.$inferSelect;

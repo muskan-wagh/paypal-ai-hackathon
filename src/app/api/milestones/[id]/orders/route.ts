@@ -33,9 +33,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       { status: 403 },
     );
   }
-  if (milestone.status !== "CHECKLISTED") {
+  if (milestone.status !== "ACCEPTED") {
     return NextResponse.json(
-      { ok: false, code: "INVALID_STATE", message: `Milestone must be CHECKLISTED to fund (currently ${milestone.status})` },
+      {
+        ok: false,
+        code: "INVALID_STATE",
+        message: `Milestone must be ACCEPTED (freelancer bound via invite) to fund — currently ${milestone.status}`,
+      },
       { status: 409 },
     );
   }

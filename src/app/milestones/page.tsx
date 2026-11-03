@@ -1,12 +1,11 @@
 import { desc, eq } from "drizzle-orm";
-import { alias } from "drizzle-orm/sqlite-core";
 import { redirect } from "next/navigation";
+import type { NavItem } from "@/components/dashboard-shell";
+import MilestoneRow from "@/components/milestone-row";
+import DashboardShell from "@/components/dashboard-shell";
 import { getDatabase } from "@/db";
-import { milestones, users as usersTable } from "@/db/schema";
-import AppHeader from "@/components/app-header";
-import StatusChip from "@/components/status-chip";
+import { milestones } from "@/db/schema";
 import { getSessionUser } from "@/lib/session";
-import type { MilestoneStatus } from "@/lib/state-machine";
 
 export const dynamic = "force-dynamic";
 
@@ -14,57 +13,54 @@ export default async function MilestonesPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const client = alias(usersTable, "client_table");
-  const freelancer = alias(usersTable, "freelancer_table");
+  const role = user.role === "client" ? "client" : "freelancer";
 
   const rows = await getDatabase()
-    .select({
-      milestone: milestones,
-      clientName: client.name,
-      freelancerName: freelancer.name,
-    })
+    .select({ milestone: milestones })
     .from(milestones)
-    .innerJoin(client, eq(milestones.clientId, client.id))
-    .leftJoin(freelancer, eq(milestones.freelancerId, freelancer.id))
-    .orderBy(desc(milestones.createdAt));
+    .where(role === "client" ? eq(milestones.clientId, user.id) : eq(milestones.freelancerId, user.id))
+    .orderBy(desc(milestones.updatedAt));
+
+  const nav: NavItem[] =
+    role === "client"
+      ? [
+          { href: "/client/dashboard", label: "Dashboard", icon: "dashboard", exact: true },
+          { href: "/client/projects", label: "Projects", icon: "projects" },
+          { href: "/client/payments", label: "Payments", icon: "wallet" },
+        ]
+      : [
+          { href: "/freelancer/dashboard", label: "Dashboard", icon: "dashboard", exact: true },
+          { href: "/freelancer/invitations", label: "Invitations", icon: "inbox" },
+          { href: "/freelancer/earnings", label: "Earnings", icon: "banknote" },
+        ];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <AppHeader user={user} />
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        <h1 className="text-2xl font-bold">Milestones</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          Every milestone moves through AI checklist → funding → proof → evaluation → human
-          approval → payout.
-        </p>
-        <div className="mt-6 space-y-3">
-          {rows.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-neutral-300 p-6 text-center text-sm text-neutral-500">
-              No milestones yet. (In this demo, milestones are seeded by{" "}
-              <code className="rounded bg-neutral-100 px-1">npm run db:reset</code>.)
-            </p>
-          ) : null}
-          {rows.map((row) => (
-            <a
-              key={row.milestone.id}
-              href={`/milestones/${row.milestone.id}`}
-              className="block rounded-lg border border-neutral-200 bg-white p-4 transition hover:border-blue-400 hover:shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-semibold text-neutral-900">{row.milestone.title}</span>
-                <StatusChip status={row.milestone.status as MilestoneStatus} />
-              </div>
-              <p className="mt-1 line-clamp-2 text-sm text-neutral-600">{row.milestone.brief}</p>
-              <p className="mt-2 text-xs text-neutral-500">
-                ${(row.milestone.amountCents / 100).toFixed(2)} {row.milestone.currency} ·
-                {" "}
-                {row.clientName} → {row.freelancerName ?? "unassigned"}
-                {row.milestone.deadline ? ` · due ${row.milestone.deadline}` : ""}
-              </p>
-            </a>
-          ))}
+    <DashboardShell user={user} items={nav}>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">All milestones</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Every milestone moves through AI checklist → invite → funding → proof → evaluation →
+            human approval → payout.
+          </p>
         </div>
-      </main>
-    </div>
+        {rows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-10 text-center">
+            <p className="font-medium text-neutral-700">Nothing here yet</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-neutral-500">
+              {role === "client"
+                ? "Create a project and add your first milestone to get started."
+                : "Milestones assigned to you will appear here."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {rows.map(({ milestone }) => (
+              <MilestoneRow key={milestone.id} milestone={milestone} role={role} />
+            ))}
+          </div>
+        )}
+      </div>
+    </DashboardShell>
   );
 }

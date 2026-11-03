@@ -1,91 +1,65 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, Mail } from "lucide-react";
+import type { NavItem } from "@/components/dashboard-shell";
+import DashboardShell from "@/components/dashboard-shell";
 import { getDatabase } from "@/db";
 import {
   checklistItems,
   evaluations,
   evaluationItems,
   milestones,
+  projects,
   payouts,
   submissions,
   users as usersTable,
   events,
   files,
+  invitations,
 } from "@/db/schema";
-import AppHeader from "@/components/app-header";
 import StatusChip from "@/components/status-chip";
 import Timeline from "@/components/timeline";
 import ChecklistGenerator from "@/components/checklist-generator";
 import FundButton from "@/components/fund-button";
+import InvitePanel from "@/components/invite-panel";
 import ProofSubmitForm from "@/components/proof-submit-form";
 import ApprovalPanel from "@/components/approval-panel";
 import PayoutButton from "@/components/payout-button";
 import { getSessionUser } from "@/lib/session";
-import {
-  MILESTONE_STATUSES,
-  type MilestoneStatus,
-} from "@/lib/state-machine";
+import { formatMoney, formatTimestamp } from "@/lib/format";
+import { nextStepFor } from "@/lib/next-step";
+import { type MilestoneStatus } from "@/lib/state-machine";
 
 export const dynamic = "force-dynamic";
 
-const NEXT_ACTION_HINTS: Partial<Record<MilestoneStatus, { client: string; freelancer: string }>> = {
-  DRAFT: {
-    client: "Next: generate the AI acceptance checklist (Phase 4 wiring).",
-    freelancer: "Waiting for the client to generate the acceptance checklist.",
-  },
-  CHECKLISTED: {
-    client: "Next: fund this milestone with PayPal (spike flow, Phase 5 wiring).",
-    freelancer: "Waiting for escrow funding via PayPal.",
-  },
-  FUNDED: {
-    client: "Funds are in escrow — waiting for proof from the freelancer.",
-    freelancer: "Next: submit your proof (Phase 6 wiring).",
-  },
-  SUBMITTED: {
-    client: "Proof received — AI evaluation runs next (Phase 6 wiring).",
-    freelancer: "Proof submitted — AI evaluation pending.",
-  },
-  EVALUATED: {
-    client: "Next: review the AI verdict and approve or request changes (Phase 7 wiring).",
-    freelancer: "AI evaluated your proof — awaiting the client's decision.",
-  },
-  REJECTED: {
-    client: "Changes requested — waiting for new proof.",
-    freelancer: "Next: submit new proof addressing the feedback.",
-  },
-  APPROVED: {
-    client: "Next: send the PayPal payout (Phase 7 wiring).",
-    freelancer: "Approved — payout incoming.",
-  },
-  PAID: {
-    client: "Paid. Done.",
-    freelancer: "Paid to your PayPal account.",
-  },
-};
+const FLOW_CHAIN: MilestoneStatus[] = [
+  "DRAFT",
+  "CHECKLISTED",
+  "INVITED",
+  "ACCEPTED",
+  "FUNDED",
+  "SUBMITTED",
+  "EVALUATED",
+  "APPROVED",
+  "PAID",
+];
 
 function ordinalStep(status: MilestoneStatus): number {
-  const mainLine: MilestoneStatus[] = [
-    "DRAFT",
-    "CHECKLISTED",
-    "FUNDED",
-    "SUBMITTED",
-    "EVALUATED",
-    "APPROVED",
-    "PAID",
-  ];
-  const index = mainLine.indexOf(status);
+  const index = FLOW_CHAIN.indexOf(status);
   if (index >= 0) return index + 1;
-  return 5; // REJECTED sits on the SUBMITTED line
+  return 6; // REJECTED sits on the SUBMITTED line
 }
 
 export default async function MilestoneDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ invited?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, { invited }] = await Promise.all([params, searchParams]);
   const milestoneId = Number(id);
   if (!Number.isInteger(milestoneId)) notFound();
 
@@ -102,16 +76,40 @@ export default async function MilestoneDetailPage({
       clientName: client.name,
       freelancerName: freelancer.name,
       freelancerEmail: freelancer.sandboxEmail,
+      projectTitle: projects.title,
+      projectId: projects.id,
     })
     .from(milestones)
     .innerJoin(client, eq(milestones.clientId, client.id))
     .leftJoin(freelancer, eq(milestones.freelancerId, freelancer.id))
+    .leftJoin(projects, eq(milestones.projectId, projects.id))
     .where(eq(milestones.id, milestoneId))
     .get();
   if (!row) notFound();
 
   const { milestone } = row;
   const status = milestone.status as MilestoneStatus;
+  const isOwner = user.role === "client" && user.id === milestone.clientId;
+  const isAssignedFreelancer = user.role === "freelancer" && milestone.freelancerId === user.id;
+
+  // Access control: the owner client, the assigned freelancer, or a freelancer
+  // with a pending invitation targeted at their email. Nobody else.
+  let myPendingInvite: { token: string } | null = null;
+  if (user.role === "client" && !isOwner) notFound();
+  if (user.role === "freelancer" && !isAssignedFreelancer) {
+    myPendingInvite = db
+      .select({ token: invitations.token })
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.milestoneId, milestoneId),
+          eq(invitations.inviteeEmail, user.email!),
+          eq(invitations.status, "pending"),
+        ),
+      )
+      .get() ?? null;
+    if (!myPendingInvite) notFound();
+  }
 
   const checklist = db
     .select()
@@ -163,6 +161,23 @@ export default async function MilestoneDetailPage({
     .orderBy(desc(events.createdAt))
     .all();
 
+  const invitationRows =
+    isOwner && (status === "CHECKLISTED" || status === "INVITED")
+      ? db
+          .select({
+            id: invitations.id,
+            token: invitations.token,
+            inviteeEmail: invitations.inviteeEmail,
+            status: invitations.status,
+            createdAt: invitations.createdAt,
+            expiresAt: invitations.expiresAt,
+          })
+          .from(invitations)
+          .where(eq(invitations.milestoneId, milestoneId))
+          .orderBy(desc(invitations.createdAt))
+          .all()
+      : [];
+
   // Latest rejection notes (if any) for the freelancer's resubmission guidance.
   const rejectionEvent = eventRows.find((e) => e.type === "REJECTED");
   const rejectionNotes =
@@ -175,78 +190,175 @@ export default async function MilestoneDetailPage({
           }
         })()
       : null;
-  const statusIndex = MILESTONE_STATUSES.indexOf(status);
-  const hint = (NEXT_ACTION_HINTS[status]?.[user.role === "client" ? "client" : "freelancer"] ?? "") as string;
-  const amountLabel = `$${(milestone.amountCents / 100).toFixed(2)} ${milestone.currency}`;
+
+  const step = nextStepFor(status, user.role === "client" ? "client" : "freelancer");
+  const amountLabel = formatMoney(milestone.amountCents, milestone.currency);
   const paypalClientId = process.env.PAYPAL_CLIENT_ID ?? "";
+  const invitedToken = invited && /^[A-Za-z0-9_-]{20,}$/.test(invited) ? invited : null;
+
+  const nav: NavItem[] = [
+    user.role === "client"
+      ? { href: "/client/dashboard", label: "Dashboard", icon: "dashboard", exact: true }
+      : { href: "/freelancer/dashboard", label: "Dashboard", icon: "dashboard", exact: true },
+    user.role === "client"
+      ? { href: "/client/projects", label: "Projects", icon: "projects" }
+      : { href: "/freelancer/invitations", label: "Invitations", icon: "inbox" },
+    user.role === "client"
+      ? { href: "/client/payments", label: "Payments", icon: "wallet" }
+      : { href: "/freelancer/earnings", label: "Earnings", icon: "banknote" },
+  ];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <AppHeader user={user} />
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        <Link href="/milestones" className="text-sm text-neutral-500 hover:text-neutral-900">
-          ← All milestones
+    <DashboardShell user={user} items={nav}>
+      <div className="space-y-6">
+        <Link
+          href={user.role === "client" ? "/client/dashboard" : "/freelancer/dashboard"}
+          className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-brand-navy"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
         </Link>
 
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold">{milestone.title}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{milestone.title}</h1>
+            <p className="mt-1 text-xs text-neutral-500">
+              {row.projectTitle ? `${row.projectTitle} · ` : ""}
+              {row.clientName} (client) → {row.freelancerName ?? "not yet accepted"} (freelancer)
+            </p>
+          </div>
           <StatusChip status={status} />
         </div>
-        <p className="mt-1 text-xs text-neutral-500">
-          {row.clientName} (client) → {row.freelancerName ?? "unassigned"} (freelancer)
-        </p>
 
-        {/* progress pills */}
-        <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
-          {(["DRAFT", "CHECKLISTED", "FUNDED", "SUBMITTED", "EVALUATED", "APPROVED", "PAID"] as MilestoneStatus[]).map(
-            (step, i) => (
-              <span key={step} className="flex items-center gap-1.5">
-                {i > 0 && <span className="text-neutral-300">→</span>}
-                <span
-                  className={
-                    statusIndex >= ordinalStep(step) || status === step
-                      ? "rounded bg-neutral-900 px-2 py-0.5 text-white"
-                      : "rounded bg-neutral-200 px-2 py-0.5 text-neutral-500"
-                  }
-                >
-                  {step}
-                </span>
+        {/* progress chain */}
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
+          {FLOW_CHAIN.map((chainStep, i) => (
+            <span key={chainStep} className="flex items-center gap-1.5">
+              {i > 0 && <span className="text-neutral-300">→</span>}
+              <span
+                className={
+                  statusIndexReached(status, chainStep)
+                    ? "rounded-full bg-brand-navy px-2.5 py-1 text-white"
+                    : "rounded-full bg-neutral-200 px-2.5 py-1 text-neutral-500"
+                }
+              >
+                {chainStep}
               </span>
-            ),
-          )}
+            </span>
+          ))}
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-5">
+        <div className="grid gap-6 lg:grid-cols-5">
           <div className="space-y-6 lg:col-span-3">
-            <section className="rounded-lg border border-neutral-200 bg-white p-4">
-              <h2 className="font-semibold">Brief</h2>
-              <p className="mt-1 text-sm text-neutral-700">{milestone.brief}</p>
-              <p className="mt-3 text-sm font-semibold">
-                ${(milestone.amountCents / 100).toFixed(2)} {milestone.currency}
+            <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+              <h2 className="font-semibold text-neutral-900">Brief</h2>
+              <p className="mt-1 text-sm leading-relaxed text-neutral-700">{milestone.brief}</p>
+              <p className="mt-3 text-sm font-semibold text-neutral-900">
+                {amountLabel}
                 {milestone.deadline ? ` · due ${milestone.deadline}` : ""}
               </p>
-              {hint ? <p className="mt-3 text-xs text-blue-700">{hint}</p> : null}
-              {user.role === "client" && user.id === milestone.clientId && status === "DRAFT" ? (
-                <div className="mt-4 border-t border-neutral-100 pt-3">
+              <p className="mt-3 text-xs">
+                <span
+                  className={
+                    step.tone === "action"
+                      ? "rounded-full bg-brand-navy px-2.5 py-1 font-semibold text-white"
+                      : step.tone === "done"
+                        ? "rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-700"
+                        : "rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-600"
+                  }
+                >
+                  {step.label}
+                </span>
+              </p>
+
+              {/* Owner: generate the AI checklist while in DRAFT */}
+              {isOwner && status === "DRAFT" ? (
+                <div className="mt-4 border-t border-neutral-100 pt-4">
                   <ChecklistGenerator milestoneId={milestoneId} />
                 </div>
               ) : null}
-              {user.role === "client" && user.id === milestone.clientId && status === "CHECKLISTED" ? (
-                <div className="mt-4 border-t border-neutral-100 pt-3">
-                  <p className="text-sm">
-                    Fund with PayPal <span className="font-semibold">{amountLabel}</span> — held in PayPal escrow
-                    until you approve the proof.
+
+              {/* Owner: invite a freelancer (CHECKLISTED/INVITED) */}
+              {isOwner && (status === "CHECKLISTED" || status === "INVITED") ? (
+                <div className="mt-4 border-t border-neutral-100 pt-4">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-neutral-900">
+                    <Mail className="h-4 w-4 text-brand" /> Invite a freelancer
+                  </h3>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    The invitee must be a registered ProofPay freelancer. Invites expire after 7
+                    days; accepting binds them to this checklist.
                   </p>
-                  <FundButton
-                    milestoneId={milestoneId}
-                    paypalClientId={paypalClientId}
-                    currency={milestone.currency}
-                    amountLabel={amountLabel}
-                  />
+                  <div className="mt-3">
+                    <InvitePanel
+                      milestoneId={milestoneId}
+                      inviteUrl={
+                        invitedToken ? `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/invite/${invitedToken}` : null
+                      }
+                    />
+                  </div>
+                  {invitationRows.length > 0 && (
+                    <ul className="mt-3 space-y-1.5 border-t border-neutral-100 pt-3">
+                      {invitationRows.map((invite) => (
+                        <li key={invite.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <span className="text-neutral-600">
+                            {invite.inviteeEmail} · sent {formatTimestamp(invite.createdAt)}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 font-semibold ${
+                              invite.status === "accepted"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : invite.status === "declined"
+                                  ? "bg-red-100 text-red-700"
+                                  : invite.status === "expired" || invite.expiresAt < Date.now()
+                                    ? "bg-neutral-100 text-neutral-500"
+                                    : "bg-indigo-100 text-indigo-700"
+                            }`}
+                          >
+                            {invite.expiresAt < Date.now() && invite.status === "pending"
+                              ? "expired — invite someone else"
+                              : invite.status}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ) : null}
-              {user.role === "freelancer" && user.id === milestone.freelancerId && (status === "FUNDED" || status === "REJECTED") ? (
-                <div className="mt-4 border-t border-neutral-100 pt-3">
+
+              {/* Owner: fund once the freelancer has accepted */}
+              {isOwner && status === "ACCEPTED" ? (
+                <div className="mt-4 border-t border-neutral-100 pt-4">
+                  <p className="text-sm">
+                    {row.freelancerName} accepted. Fund with PayPal{" "}
+                    <span className="font-semibold">{amountLabel}</span> — held in PayPal escrow until
+                    you approve the proof.
+                  </p>
+                  <div className="mt-3">
+                    <FundButton
+                      milestoneId={milestoneId}
+                      paypalClientId={paypalClientId}
+                      currency={milestone.currency}
+                      amountLabel={amountLabel}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Freelancer: view their invitation */}
+              {user.role === "freelancer" && myPendingInvite && status === "INVITED" ? (
+                <div className="mt-4 border-t border-neutral-100 pt-4">
+                  <p className="text-sm text-neutral-600">
+                    You've been invited. Accept it from{" "}
+                    <Link href="/freelancer/invitations" className="font-semibold text-brand hover:underline">
+                      your invitations
+                    </Link>{" "}
+                    to bind yourself to this checklist.
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Freelancer: submit / resubmit proof */}
+              {isAssignedFreelancer && (status === "FUNDED" || status === "REJECTED") ? (
+                <div className="mt-4 border-t border-neutral-100 pt-4">
                   <p className="text-sm font-medium">
                     {status === "REJECTED" ? "Resubmit proof (address the feedback above)" : "Submit proof of delivery"}
                   </p>
@@ -255,8 +367,10 @@ export default async function MilestoneDetailPage({
                   </div>
                 </div>
               ) : null}
-              {user.role === "freelancer" && user.id === milestone.freelancerId && status === "SUBMITTED" ? (
-                <div className="mt-4 border-t border-neutral-100 pt-3">
+
+              {/* Members: retry a failed AI evaluation */}
+              {(isOwner || isAssignedFreelancer) && status === "SUBMITTED" ? (
+                <div className="mt-4 border-t border-neutral-100 pt-4">
                   <p className="text-sm text-neutral-600">Evaluation failed or still running. Retry the AI evaluation:</p>
                   <button
                     type="button"
@@ -264,7 +378,7 @@ export default async function MilestoneDetailPage({
                       await fetch(`/api/milestones/${milestoneId}/evaluate`, { method: "POST" });
                       window.location.reload();
                     }}
-                    className="mt-2 rounded border border-neutral-300 bg-white px-3 py-1 text-xs"
+                    className="mt-2 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 transition hover:border-brand hover:text-brand-navy"
                   >
                     Retry AI evaluation
                   </button>
@@ -273,21 +387,22 @@ export default async function MilestoneDetailPage({
             </section>
 
             {status === "REJECTED" && rejectionNotes ? (
-              <section className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <section className="rounded-xl border border-red-200 bg-red-50 p-5">
                 <h2 className="font-semibold text-red-800">Changes requested</h2>
-                <p className="mt-1 text-sm text-red-700 whitespace-pre-wrap">{rejectionNotes}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-red-700">{rejectionNotes}</p>
               </section>
             ) : null}
+
             {checklist.length > 0 ? (
-              <section className="rounded-lg border border-neutral-200 bg-white p-4">
-                <h2 className="font-semibold">
+              <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+                <h2 className="font-semibold text-neutral-900">
                   Acceptance checklist
                   <span className="ml-2 text-xs font-normal text-neutral-400">AI-generated</span>
                 </h2>
                 <ul className="mt-2 space-y-3">
                   {checklist.map((item) => (
                     <li key={item.id} className="text-sm">
-                      <p className="font-medium">
+                      <p className="font-medium text-neutral-900">
                         {item.title}
                         <span className="ml-2 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500">
                           {item.checkType}
@@ -301,8 +416,8 @@ export default async function MilestoneDetailPage({
             ) : null}
 
             {milestoneSubmissions.length > 0 ? (
-              <section className="rounded-lg border border-neutral-200 bg-white p-4">
-                <h2 className="font-semibold">Proof submissions</h2>
+              <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+                <h2 className="font-semibold text-neutral-900">Proof submissions</h2>
                 {milestoneSubmissions.map((submission) => (
                   <div key={submission.id} className="mt-3 border-t border-neutral-100 pt-3 text-sm first:border-0 first:pt-0">
                     <p className="text-xs text-neutral-400">
@@ -324,12 +439,10 @@ export default async function MilestoneDetailPage({
             ) : null}
 
             {evaluationRows.length > 0 ? (
-              <section className="rounded-lg border border-neutral-200 bg-white p-4">
-                <h2 className="font-semibold">
+              <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+                <h2 className="font-semibold text-neutral-900">
                   AI evaluation
-                  <span className="ml-2 text-xs font-normal text-neutral-400">
-                    {evaluationRows[0].model}
-                  </span>
+                  <span className="ml-2 text-xs font-normal text-neutral-400">{evaluationRows[0].model}</span>
                 </h2>
                 {evaluationRows.map((evaluation) => (
                   <div key={evaluation.id} className="mt-3 border-t border-neutral-100 pt-3 first:border-0 first:pt-0">
@@ -363,9 +476,9 @@ export default async function MilestoneDetailPage({
               </section>
             ) : null}
 
-            {user.role === "client" && user.id === milestone.clientId && status === "EVALUATED" ? (
-              <section className="rounded-lg border border-neutral-200 bg-white p-4">
-                <h2 className="font-semibold">Final decision (human approval required)</h2>
+            {isOwner && status === "EVALUATED" ? (
+              <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+                <h2 className="font-semibold text-neutral-900">Final decision (human approval required)</h2>
                 <p className="mt-1 text-xs text-neutral-500">
                   AI never moves money. Review the verdict above, then approve or request changes.
                 </p>
@@ -375,9 +488,9 @@ export default async function MilestoneDetailPage({
               </section>
             ) : null}
 
-            {user.role === "client" && user.id === milestone.clientId && status === "APPROVED" ? (
-              <section className="rounded-lg border border-neutral-200 bg-white p-4">
-                <h2 className="font-semibold">Send payout</h2>
+            {isOwner && status === "APPROVED" ? (
+              <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+                <h2 className="font-semibold text-neutral-900">Send payout</h2>
                 <p className="mt-1 text-xs text-neutral-500">
                   Approved — release {amountLabel} to the freelancer via PayPal Payouts.
                 </p>
@@ -388,11 +501,11 @@ export default async function MilestoneDetailPage({
             ) : null}
 
             {payoutRows.length > 0 ? (
-              <section className="rounded-lg border border-neutral-200 bg-white p-4">
-                <h2 className="font-semibold">Payouts</h2>
+              <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+                <h2 className="font-semibold text-neutral-900">Payouts</h2>
                 {payoutRows.map((payout) => (
                   <p key={payout.id} className="mt-2 text-sm text-neutral-700 first:mt-0">
-                    {payout.batchId} → {payout.receiver} · ${(payout.amountCents / 100).toFixed(2)} ·{" "}
+                    {payout.batchId} → {payout.receiver} · {formatMoney(payout.amountCents, milestone.currency)} ·{" "}
                     <span className="font-semibold">{payout.status}</span>
                   </p>
                 ))}
@@ -400,14 +513,20 @@ export default async function MilestoneDetailPage({
             ) : null}
           </div>
 
-          <section className="rounded-lg border border-neutral-200 bg-white p-4 lg:col-span-2">
-            <h2 className="font-semibold">Timeline</h2>
+          <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm h-fit lg:col-span-2">
+            <h2 className="font-semibold text-neutral-900">Timeline</h2>
             <div className="mt-3">
               <Timeline events={eventRows} />
             </div>
           </section>
         </div>
-      </main>
-    </div>
+      </div>
+    </DashboardShell>
   );
+}
+
+/** Forward-progress styling for the chain pills (REJECTED renders on SUBMITTED's line). */
+function statusIndexReached(current: MilestoneStatus, step: MilestoneStatus): boolean {
+  const currentOrdinal = ordinalStep(current);
+  return ordinalStep(step) <= currentOrdinal;
 }
