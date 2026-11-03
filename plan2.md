@@ -19,7 +19,7 @@
 | 2 — Dashboards + role routing | ✅ Built & rendering 200 for both roles | client/freelancer dashboards, sidebar shell, middleware redirects (cross-role 307, anon 307) |
 | 3 — Projects, milestones, invitations | ✅ Built & E2E-verified via API | project 2 created; milestone 3 created (201); invite token; invite accept 200 |
 | 4 — AI checklist + funding wiring | ✅ E2E-verified | checklist: 6 items via nemotron-3.5; real sandbox order `8Y8081072X799225Y` from ACCEPTED state |
-| 5 — Evaluation/approval/payout wiring | ✅ Routes unchanged from verified Phase 6–8 path | guard checks: early payout 409, cross-role 403 |
+| 5 — Evaluation/approval/payout wiring | ✅ Live end-to-end money loop | submission→AI fail(0/100 correct)→human approve→real payout batch `MDKQ2N6L8HAWW` $200→PAID |
 | 6 — Payments/Earnings/Settings + polish | ✅ Pages built; responsive pass pending browser check | `/client/payments`, `/freelancer/earnings`, settings×2, `/api/profile` |
 
 Dev server: `npm run dev` on :3000. Production build + lint: green.
@@ -358,19 +358,19 @@ Each stage builds on the previous. Do not skip stages.
 
 ## 11. Success criteria
 
-- [x] A new user can register as client or freelancer *(data layer verified via bcrypt; final UI click-through pending)*
+- [x] A new user can register as client or freelancer *(real action POST verified: 303→/dashboard + cookie; duplicate email → inline error; login verified correct/wrong password)*
 - [x] Client creates a project + milestone *(API 201 + pages 200)*
 - [x] Client generates AI checklist *(milestone 3: 6 items, nemotron-3.5-super-vl)*
 - [x] Client invites freelancer (by email) *(token `A4oICz…`; milestone → INVITED)*
 - [x] Freelancer accepts invitation *(milestone 3 → ACCEPTED; invite → accepted, others expired)*
 - [x] Client funds milestone via PayPal sandbox *(real order `8Y8081072X799225Y`, $50.00, CREATED)*
-- [ ] Freelancer submits proof (images/PDF) *(routes unchanged from verified Phase 6; confirm on milestone 3 after capture)*
-- [ ] AI evaluates proof against checklist *(verified Phase 8 milestone 1; re-confirm on milestone 3)*
-- [ ] Client approves or rejects (with notes) *(verified Phase 7; re-confirm on milestone 3)*
+- [x] Freelancer submits proof (images/PDF) *(submission 1 on milestone 2: multipart + notes → SUBMITTED)*
+- [x] AI evaluates proof against checklist *(evaluation 1 live: verdict fail 0/100 on placeholder image — correct)*
+- [x] Client approves or rejects (with notes) *(milestone 2 → APPROVED; reject path verified Phase 7)*
 - [x] On approval, client sends PayPal Payout *(verified Phase 7 — AWXRTQCSCLBHW → PAID)*
-- [ ] Freelancer sees payout status *(earnings page reads the same payouts table — verify with a live batch)*
+- [x] Freelancer sees payout status *(earnings page renders batch MDKQ2N6L8HAWW + $200.00; client payments page too)*
 - [x] Both users see complete timeline *(events ledger + Timeline component, unchanged)*
 - [ ] All pages responsive (mobile + desktop) *(shell is mobile-first w/ sheet nav; needs device check)*
 - [x] No mock data in core functionality *(all data from SQLite; all money via real sandbox APIs)*
-- [x] End-to-end flow tested with real PayPal sandbox APIs *(order creation live; capture/popup to be demoed)*
+- [x] End-to-end flow tested with real PayPal sandbox APIs *(order `8Y8081072X799225Y` live; payout batch `MDKQ2N6L8HAWW` live; capture popup reserved for the video demo — milestone 3 is staged at ACCEPTED)*
 - [x] All tests pass (typecheck + build + smoke) *(tsc clean, `next build` green incl. lint)*
