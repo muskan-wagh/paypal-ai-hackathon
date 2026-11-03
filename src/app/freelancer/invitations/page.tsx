@@ -30,7 +30,7 @@ export default async function InvitationsPage() {
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Invitations</h1>
         <p className="mt-1 text-sm text-neutral-500">
           Offers sent to <span className="font-medium text-neutral-700">{user.email}</span>.
-          Accepting binds you to the milestone's checklist, amount and deadline.
+          Accepting binds you to the milestone&apos;s checklist, amount and deadline.
         </p>
       </div>
 

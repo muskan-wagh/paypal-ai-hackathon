@@ -36,7 +36,7 @@ npm run db:reset
 
 # 5. Run
 npm run dev
-# → http://localhost:3000  (login as Maya or Dana)
+# → http://localhost:3000  (log in: maya@proofpay.dev / dana@proofpay.dev — password demo1234)
 ```
 
 Environment values (all from free accounts):
@@ -64,7 +64,7 @@ Client (browser) → Next.js (server) → OpenRouter (AI) + PayPal (sandbox)
 **State machine** (enforced server-side only):
 
 ```
-DRAFT → CHECKLISTED → FUNDED → SUBMITTED → EVALUATED → APPROVED → PAID
+DRAFT → CHECKLISTED → INVITED → ACCEPTED → FUNDED → SUBMITTED → EVALUATED → APPROVED → PAID
                                             ↘ REJECTED → SUBMITTED (resubmit)
 ```
 
@@ -72,8 +72,9 @@ DRAFT → CHECKLISTED → FUNDED → SUBMITTED → EVALUATED → APPROVED → PA
 no external storage needed. `events` table is the append-only audit ledger that drives
 the on-screen timeline.
 
-**Auth**: HttpOnly HMAC-signed cookie `{userId, exp}` — persona-based (Maya = client,
-Dana = freelancer). Role checks enforced on every server route.
+**Auth**: real registration with bcrypt password hashing, wrapped in an HttpOnly
+HMAC-signed cookie `{userId, exp}`. Role checks enforced on every server route;
+demo logins seeded on `db:reset` (maya@ / dana@proofpay.dev, password `demo1234`).
 
 ## Tech stack
 

@@ -257,7 +257,7 @@ export default async function LandingPage() {
           <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-neutral-600">
             The AI writes checklists and grades proof — but it holds no PayPal credentials. Transitions
             between states are enforced server-side, amounts are verified against the captured order,
-            payouts are idempotent, and only the milestone's client can approve and release funds.
+            payouts are idempotent, and only the milestone&apos;s client can approve and release funds.
           </p>
         </div>
       </section>

@@ -29,7 +29,7 @@ export default async function ClientSettingsPage() {
       <section className="rounded-xl border border-neutral-200 bg-white p-6 text-sm shadow-sm">
         <h2 className="font-semibold text-neutral-900">Payments</h2>
         <p className="mt-1.5 text-neutral-600">
-          Funding checkout uses the platform's PayPal sandbox business account. Clients approve and
+          Funding checkout uses the platform&apos;s PayPal sandbox business account. Clients approve and
           release payouts; money only moves after your explicit approval (server-enforced).
         </p>
       </section>

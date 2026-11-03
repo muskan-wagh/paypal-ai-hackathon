@@ -131,7 +131,7 @@ export default async function FreelancerDashboard() {
               <p className="font-medium text-neutral-700">No assigned milestones yet</p>
               <p className="mx-auto mt-1 max-w-sm text-sm text-neutral-500">
                 When a client invites you to a milestone, it appears here — with the amount, deadline
-                and the exact acceptance checklist you'll be graded on.
+                and the exact acceptance checklist you&apos;ll be graded on.
               </p>
             </div>
           ) : (

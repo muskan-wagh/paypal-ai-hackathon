@@ -31,12 +31,12 @@ npm install
 # 3. Configure (copy and fill in the values — see comments in the file)
 cp .env.example .env
 
-# 4. Seed the demo database (Maya = client, Dana = freelancer, two milestones)
+# 4. Seed the demo database (Maya = client, Dana = freelancer, demo project + 2 milestones)
 npm run db:reset
 
 # 5. Run
 npm run dev
-# → http://localhost:3000  (login as Maya or Dana)
+# → http://localhost:3000  (log in: maya@proofpay.dev / dana@proofpay.dev — password demo1234)
 ```
 
 Environment values (all from free accounts):
@@ -96,7 +96,7 @@ diagnosis.
 **State machine** (enforced server-side only):
 
 ```
-DRAFT → CHECKLISTED → FUNDED → SUBMITTED → EVALUATED → APPROVED → PAID
+DRAFT → CHECKLISTED → INVITED → ACCEPTED → FUNDED → SUBMITTED → EVALUATED → APPROVED → PAID
                                             ↘ REJECTED → SUBMITTED (resubmit)
 ```
 
@@ -104,7 +104,8 @@ DRAFT → CHECKLISTED → FUNDED → SUBMITTED → EVALUATED → APPROVED → PA
 no external storage needed. `events` table is the append-only audit ledger that drives
 the on-screen timeline.
 
-**Auth**: HttpOnly HMAC-signed cookie `{userId, exp}` — persona-based (Maya = client,
+**Auth**: HttpOnly HMAC-signed cookie `{userId, exp}` on top of real bcrypt
+registration — the client and the freelancer see different controls;
 Dana = freelancer). Role checks enforced on every server route.
 
 ## Tech stack
@@ -167,10 +168,14 @@ cat > /home/maahi/Desktopp/paypal-ai-hackathon/DEMO.md << 'DEMOEOF'
 
 ## Test credentials (sandbox, no real money)
 
+Real email + password accounts (bcrypt):
+
 | Persona | Name | Role | Login |
 |---|---|---|---|
-| Client | Maya Chen | client | Click "Maya Chen" on /login |
-| Freelancer | Dana Rivera | freelancer | Click "Dana Rivera" on /login |
+| Client | Maya Chen | client | `maya@proofpay.dev` / `demo1234` |
+| Freelancer | Dana Rivera | freelancer | `dana@proofpay.dev` / `demo1234` |
+
+(The login page has one-click "Fill" buttons for both demo accounts.)
 
 Sandbox PayPal buyer: the US personal account (`sb-…@personal.example.com`).
 Sandbox PayPal seller/merchant: the US business account attached to the `proofpay-us` app.
@@ -183,22 +188,22 @@ Sandbox PayPal seller/merchant: the US business account attached to the `proofpa
 - Test credentials above work through Dec 15, 2026
 - No expiring credentials
 
-## Scripted walkthrough (≈ 2:30)
+## Scripted walkthrough (≈ 2:40)
 
-1. **Login as Maya (client)** → milestones list shows two seeded milestones
-2. **Open "Landing page hero redesign" (DRAFT)** → click "Generate acceptance checklist with AI"
-   - AI (OpenRouter / nemotron) generates 4–8 checklist items in ~10–20 s
-   - Milestone → CHECKLISTED; timeline gains "AI acceptance checklist generated"
-3. **Click "Fund with PayPal"** → real sandbox popup → log in with the US personal account → approve $250.00
-   - Milestone → FUNDED; timeline gains "Funded via PayPal (escrow)"
-4. **Switch to Dana (freelancer)** → open the funded milestone → submit proof (screenshot + notes)
+1. **Log in as Maya (`maya@proofpay.dev`)** → client dashboard (stats + next-step hints)
+2. **New project → add milestone** ("E2E checkout card", $50, short brief) → DRAFT
+3. **Generate the AI acceptance checklist** (OpenRouter / nemotron) → CHECKLISTED
+4. **Invite** `dana@proofpay.dev` from the milestone page → INVITED (invite lands in the
+   freelancer's dashboard *and* as a shareable link)
+5. **Log in as Dana (`dana@proofpay.dev`)** → invitation card → **Accept** → ACCEPTED
+6. **Switch to Maya** → fund the milestone:
+   real sandbox popup → approve $50.00 → FUNDED
+7. **Switch to Dana** → open the funded milestone → submit proof (screenshot + notes)
    - AI evaluates against the checklist → per-item pass/partial/fail + score 0–100
-   - Milestone → EVALUATED; timeline gains "Proof submitted" + "AI evaluation complete"
-5. **Switch back to Maya** → review the AI verdict → click "Approve"
-   - Milestone → APPROVED; timeline gains "Client approved"
-6. **Click "Send PayPal payout"** → real PayPal Payouts API → batch created
-   - Milestone → PAID; timeline gains "Payout sent via PayPal"
-   - Show the payout batch ID and SUCCESS status
+   - Milestone → EVALUATED
+8. **Switch to Maya** → review the AI verdict → **Approve** → APPROVED
+9. **Send PayPal payout** → real PayPal Payouts API → batch created → PAID
+   - Dana's Earnings page + Maya's Payments page both show the batch ID + status
 
 ## Key moments for judges
 

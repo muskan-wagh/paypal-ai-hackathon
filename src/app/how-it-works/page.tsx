@@ -120,7 +120,7 @@ export default async function HowItWorksPage() {
         <section id="security" className="border-t border-neutral-200 bg-brand-wash py-16">
           <div className="mx-auto max-w-4xl px-4 text-center sm:px-6">
             <Lock className="mx-auto h-8 w-8 text-brand" />
-            <h2 className="mt-3 text-2xl font-bold text-neutral-900">What the AI can't do</h2>
+            <h2 className="mt-3 text-2xl font-bold text-neutral-900">What the AI can&apos;t do</h2>
             <div className="mx-auto mt-6 grid max-w-2xl gap-3 text-left sm:grid-cols-2">
               {[
                 "It holds no PayPal credentials — capture, capture-verification and payouts are server-side only.",

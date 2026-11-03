@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Mail } from "lucide-react";
 import Brand from "@/components/brand";
 import InvitationActions from "@/components/invitation-actions";
@@ -82,7 +81,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Brief</p>
           <p className="mt-1 text-sm leading-relaxed text-neutral-600">{invite.milestone.brief}</p>
           <p className="mt-2 text-xs text-neutral-400">
-            The AI acceptance checklist is generated from this brief — you'll see every criterion
+            The AI acceptance checklist is generated from this brief — you&apos;ll see every criterion
             before you accept.
           </p>
         </div>

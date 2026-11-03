@@ -59,7 +59,7 @@ export default function InvitePanel({
             </button>
           </div>
           <p className="mt-1.5 text-[11px] text-emerald-700">
-            The freelancer's ProofPay inbox also holds this invite — the link is a backup.
+            The freelancer&apos;s ProofPay inbox also holds this invite — the link is a backup.
           </p>
         </div>
       ) : null}
@@ -67,7 +67,7 @@ export default function InvitePanel({
         <input type="hidden" name="milestoneId" value={milestoneId} />
         <div>
           <Label htmlFor="inviteeEmail" className="text-xs font-medium text-neutral-600">
-            Freelancer's ProofPay email
+            Freelancer&apos;s ProofPay email
           </Label>
           <Input
             id="inviteeEmail"

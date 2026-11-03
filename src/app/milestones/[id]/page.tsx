@@ -347,7 +347,7 @@ export default async function MilestoneDetailPage({
               {user.role === "freelancer" && myPendingInvite && status === "INVITED" ? (
                 <div className="mt-4 border-t border-neutral-100 pt-4">
                   <p className="text-sm text-neutral-600">
-                    You've been invited. Accept it from{" "}
+                    You&apos;ve been invited. Accept it from{" "}
                     <Link href="/freelancer/invitations" className="font-semibold text-brand hover:underline">
                       your invitations
                     </Link>{" "}
