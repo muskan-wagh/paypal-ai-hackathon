@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -184,10 +185,12 @@ export default function DashboardShell({
                 }
               />
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <p className="text-sm font-medium text-neutral-900">{user.name}</p>
-                  <p className="text-xs font-normal text-neutral-500">{user.email}</p>
-                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>
+                    <p className="text-sm font-medium text-neutral-900">{user.name}</p>
+                    <p className="text-xs font-normal text-neutral-500">{user.email}</p>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   render={
