@@ -4,16 +4,20 @@ import { and, desc, eq } from "drizzle-orm";
 import {
   ArrowRight,
   Banknote,
-  CalendarClock,
   CheckCircle2,
   Clock3,
+  Mail,
   Zap,
 } from "lucide-react";
+import ActivityFeed, { type ActivityEvent } from "@/components/activity-feed";
 import DemoBadge from "@/components/demo-badge";
+import DemoNotice from "@/components/demo-notice";
+import EmptyState from "@/components/empty-state";
 import InvitationActions from "@/components/invitation-actions";
 import MilestoneRow from "@/components/milestone-row";
+import PageHeader from "@/components/page-header";
 import StatTile from "@/components/stat-tile";
-import { eventLabel } from "@/components/timeline";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { getDatabase } from "@/db";
 import { events, invitations, milestones, payouts, projects, users } from "@/db/schema";
 import { isDemoMilestone } from "@/lib/demo";
@@ -51,6 +55,7 @@ export default async function FreelancerDashboard() {
       milestoneId: invitations.milestoneId,
       milestoneTitle: milestones.title,
       amountCents: milestones.amountCents,
+      currency: milestones.currency,
       deadline: milestones.deadline,
     })
     .from(invitations)
@@ -116,103 +121,105 @@ export default async function FreelancerDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+      <PageHeader
+        eyebrow="Freelancer workspace"
+        title={
+          <span className="flex flex-wrap items-center gap-2">
             Welcome back, {user.name.split(" ")[0]}
-          </h1>
-          {hasDemoData ? <DemoBadge label="Demo workspace" className="mt-1" /> : null}
-        </div>
-        <p className="mt-1 text-sm text-neutral-500">
-          Assigned milestones, submissions and payout status in one place.
-        </p>
-      </div>
+            {hasDemoData ? <DemoBadge label="Demo workspace" /> : null}
+          </span>
+        }
+        description="Assigned milestones, submissions and payout status in one place."
+      />
 
-      {hasDemoData ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          <p className="font-semibold">Sample data</p>
-          <p className="mt-0.5 text-amber-700">
-            This workspace is seeded with demo projects so you can explore a complete ProofPay
-            workflow. Records marked{" "}
-            <span className="mx-0.5 inline-block align-middle">
-              <DemoBadge />
-            </span>{" "}
-            are sample transactions — PayPal ids are prefixed <code>DEMO-</code> and funding/payout
-            calls are disabled for them, so no real money can ever move.
-          </p>
-        </div>
-      ) : null}
+      {hasDemoData ? <DemoNotice /> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          label="Total earned"
-          value={formatMoney(earnedTotal)}
-          sub="received via PayPal payouts"
-          icon={Banknote}
-        />
-        <StatTile
-          label="Pending payments"
-          value={formatMoney(pendingPayments)}
-          sub="evaluated / approved, awaiting release"
-          icon={Clock3}
-        />
-        <StatTile
-          label="Active projects"
-          value={activeProjects}
-          sub={`${assigned.filter((m) => ACTION_STATUSES.includes(m.status)).length} need your action`}
-          icon={Zap}
-        />
-        <StatTile
-          label="Completed milestones"
-          value={completedCount}
-          sub="paid out in full"
-          icon={CheckCircle2}
-        />
-      </div>
+      <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem>
+          <StatTile
+            label="Total earned"
+            value={earnedTotal}
+            currency="USD"
+            sub="received via PayPal payouts"
+            icon={Banknote}
+            tone="emerald"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
+            label="Pending payments"
+            value={pendingPayments}
+            currency="USD"
+            sub="evaluated / approved, awaiting release"
+            icon={Clock3}
+            tone={pendingPayments > 0 ? "amber" : "brand"}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
+            label="Active projects"
+            value={activeProjects}
+            sub={`${assigned.filter((m) => ACTION_STATUSES.includes(m.status)).length} need your action`}
+            icon={Zap}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
+            label="Completed milestones"
+            value={completedCount}
+            sub="paid out in full"
+            icon={CheckCircle2}
+            tone="sky"
+          />
+        </StaggerItem>
+      </Stagger>
 
       {pendingInvites.length > 0 && (
-        <section>
-          <h2 className="font-semibold text-neutral-900">Invitations</h2>
-          <div className="mt-3 space-y-2">
-            {pendingInvites.map((invite) => (
-              <div
-                key={invite.token}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/30 bg-white p-4 shadow-sm"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-neutral-900">{invite.milestoneTitle}</p>
-                  <p className="mt-0.5 text-xs text-neutral-500">
-                    {formatMoney(invite.amountCents)} · deadline {invite.deadline ?? "TBD"}
-                    {invite.message ? ` · “${invite.message}”` : ""}
-                  </p>
+        <Reveal>
+          <section>
+            <h2 className="font-semibold tracking-tight text-neutral-900">Invitations</h2>
+            <div className="mt-3 space-y-2">
+              {pendingInvites.map((invite) => (
+                <div
+                  key={invite.token}
+                  className="card-surface flex flex-wrap items-center justify-between gap-3 rounded-2xl border-l-4 border-l-brand p-4 sm:p-5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-neutral-900">{invite.milestoneTitle}</p>
+                    <p className="mt-0.5 text-xs text-neutral-500">
+                      <span className="font-semibold text-neutral-700 tnum">
+                        {formatMoney(invite.amountCents, invite.currency)}
+                      </span>
+                      {" · "}deadline {invite.deadline ?? "TBD"}
+                      {invite.message ? ` · “${invite.message}”` : ""}
+                    </p>
+                  </div>
+                  <InvitationActions token={invite.token} />
                 </div>
-                <InvitationActions token={invite.token} />
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        </Reveal>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <section>
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-neutral-900">My milestones</h2>
+            <h2 className="font-semibold tracking-tight text-neutral-900">My milestones</h2>
             <Link
               href="/freelancer/earnings"
-              className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline"
             >
               Earnings <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
           <div className="mt-3 space-y-3">
             {assigned.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-10 text-center">
-                <p className="font-medium text-neutral-700">No assigned milestones yet</p>
-                <p className="mx-auto mt-1 max-w-sm text-sm text-neutral-500">
-                  When a client invites you to a milestone, it appears here — with the amount, deadline
-                  and the exact acceptance checklist you&apos;ll be graded on.
-                </p>
-              </div>
+              <EmptyState
+                icon={Mail}
+                title="No assigned milestones yet"
+                body="When a client invites you to a milestone, it appears here — with the amount, deadline and the exact acceptance checklist you'll be graded on."
+              />
             ) : (
               assigned.map((milestone) => (
                 <MilestoneRow
@@ -230,114 +237,93 @@ export default async function FreelancerDashboard() {
         </section>
 
         <div className="space-y-6">
-          <section>
-            <h2 className="font-semibold text-neutral-900">Upcoming deadlines</h2>
-            <div className="mt-3 space-y-2 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-              {upcoming.length === 0 ? (
-                <p className="text-sm text-neutral-500">No open deadlines.</p>
-              ) : (
-                upcoming.map((m) => {
-                  const days = daysUntil(m.deadline);
-                  const overdue = days !== null && days < 0;
-                  return (
-                    <Link
-                      key={m.id}
-                      href={`/milestones/${m.id}`}
-                      className="flex items-center justify-between gap-3 text-sm"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium text-neutral-800">{m.title}</span>
-                        <span className="text-xs text-neutral-400">{formatDate(m.deadline)}</span>
-                      </span>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          overdue
-                            ? "bg-red-50 text-red-700"
-                            : (days ?? 0) <= 3
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-neutral-100 text-neutral-600"
-                        }`}
-                      >
-                        {overdue ? "overdue" : days === 0 ? "due today" : `${days}d left`}
-                      </span>
-                    </Link>
-                  );
-                })
-              )}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="font-semibold text-neutral-900">Recent payouts</h2>
-            <div className="mt-3 space-y-2 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-              {myPayouts.length === 0 ? (
-                <p className="text-sm text-neutral-500">
-                  No payouts yet. Deliver great work — the money follows the approval.
-                </p>
-              ) : (
-                myPayouts.slice(0, 4).map((row) => (
-                  <div key={row.payout.id} className="flex items-start justify-between gap-3 text-sm">
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium text-neutral-800">
-                        {row.milestoneTitle}
-                      </span>
-                      <span className="font-mono text-[10px] text-neutral-400">{row.payout.batchId}</span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block font-semibold text-emerald-700">
-                        +{formatMoney(row.payout.amountCents, row.currency)}
-                      </span>
-                      <span className="text-[10px] text-neutral-400">
-                        {formatTimestamp(row.payout.createdAt)}
-                      </span>
-                    </span>
-                  </div>
-                ))
-              )}
-              <Link
-                href="/freelancer/earnings"
-                className="inline-flex items-center gap-1 pt-1 text-sm font-medium text-brand hover:underline"
-              >
-                Full payout history <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="flex items-center gap-1.5 font-semibold text-neutral-900">
-              <CalendarClock className="h-4 w-4 text-brand" /> Recent activity
-            </h2>
-            <ol className="mt-3 space-y-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-              {recentEvents.length === 0 && <li className="text-sm text-neutral-500">No activity yet.</li>}
-              {recentEvents.map((event) => {
-                const meta = eventLabel(event.type);
-                return (
-                  <li key={event.id} className="flex items-start gap-3">
-                    <span
-                      aria-hidden
-                      className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-xs font-bold text-neutral-600"
-                    >
-                      {meta.icon}
-                    </span>
-                    <div className="min-w-0">
+          <Reveal>
+            <section>
+              <h2 className="font-semibold tracking-tight text-neutral-900">Upcoming deadlines</h2>
+              <div className="card-surface mt-3 space-y-3 rounded-2xl p-5">
+                {upcoming.length === 0 ? (
+                  <p className="text-sm text-neutral-500">No open deadlines.</p>
+                ) : (
+                  upcoming.map((m) => {
+                    const days = daysUntil(m.deadline);
+                    const overdue = days !== null && days < 0;
+                    return (
                       <Link
-                        href={`/milestones/${event.milestoneId}`}
-                        className="text-sm font-medium text-neutral-800 hover:text-brand"
+                        key={m.id}
+                        href={`/milestones/${m.id}`}
+                        className="flex items-center justify-between gap-3 text-sm transition-colors hover:text-brand"
                       >
-                        {meta.label}
-                        <span className="ml-1 font-normal text-neutral-400">
-                          — {event.milestoneTitle}
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-neutral-800">{m.title}</span>
+                          <span className="text-xs text-neutral-400">{formatDate(m.deadline)}</span>
+                        </span>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            overdue
+                              ? "bg-red-50 text-red-700"
+                              : (days ?? 0) <= 3
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-neutral-100 text-neutral-600"
+                          }`}
+                        >
+                          {overdue ? "overdue" : days === 0 ? "due today" : `${days}d left`}
                         </span>
                       </Link>
-                      <p className="text-xs text-neutral-400">
-                        {event.actor} · {formatTimestamp(event.createdAt)}
-                      </p>
+                    );
+                  })
+                )}
+              </div>
+            </section>
+          </Reveal>
+
+          <Reveal>
+            <section>
+              <h2 className="font-semibold tracking-tight text-neutral-900">Recent payouts</h2>
+              <div className="card-surface mt-3 space-y-3 rounded-2xl p-5">
+                {myPayouts.length === 0 ? (
+                  <p className="text-sm text-neutral-500">
+                    No payouts yet. Deliver great work — the money follows the approval.
+                  </p>
+                ) : (
+                  myPayouts.slice(0, 4).map((row) => (
+                    <div key={row.payout.id} className="flex items-start justify-between gap-3 text-sm">
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-neutral-800">
+                          {row.milestoneTitle}
+                        </span>
+                        <span className="font-mono text-[10px] text-neutral-400">
+                          {row.payout.batchId}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span className="block font-semibold text-emerald-700 tnum">
+                          +{formatMoney(row.payout.amountCents, row.currency)}
+                        </span>
+                        <span className="text-[10px] text-neutral-400">
+                          {formatTimestamp(row.payout.createdAt)}
+                        </span>
+                      </span>
                     </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
+                  ))
+                )}
+                <Link
+                  href="/freelancer/earnings"
+                  className="inline-flex items-center gap-1 pt-1 text-sm font-semibold text-brand hover:underline"
+                >
+                  Full payout history <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </section>
+          </Reveal>
+
+          <Reveal>
+            <section>
+              <h2 className="font-semibold tracking-tight text-neutral-900">Recent activity</h2>
+              <div className="card-surface mt-3 rounded-2xl p-5">
+                <ActivityFeed events={recentEvents as ActivityEvent[]} />
+              </div>
+            </section>
+          </Reveal>
         </div>
       </div>
     </div>

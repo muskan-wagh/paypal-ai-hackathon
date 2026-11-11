@@ -53,7 +53,7 @@ export default function InvitationActions({ token }: { token: string }) {
           Decline
         </Button>
       </div>
-      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1.5 text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
 }

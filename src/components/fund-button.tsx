@@ -52,7 +52,7 @@ export default function FundButton({
 
   if (!paypalClientId) {
     return (
-      <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+      <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
         <code>PAYPAL_CLIENT_ID</code> is not configured on the server.
       </p>
     );
@@ -107,16 +107,20 @@ export default function FundButton({
       </div>
 
       {capture.phase === "capturing" ? (
-        <p className="mt-3 text-sm text-neutral-600">Capturing your approved payment…</p>
+        <p className="mt-3 flex items-center gap-2 text-sm text-neutral-600">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand/30 border-t-brand" />
+          Capturing your approved payment…
+        </p>
       ) : null}
       {capture.phase === "done" ? (
-        <p className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          ✓ {amountLabel} captured into escrow{capture.payerEmail ? ` from ${capture.payerEmail}` : ""}.
-          The freelancer can now submit proof.
+        <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          ✓ {amountLabel} captured into escrow
+          {capture.payerEmail ? ` from ${capture.payerEmail}` : ""}. The freelancer can now submit
+          proof.
         </p>
       ) : null}
       {capture.phase === "error" ? (
-        <p className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           {capture.friendly}
         </p>
       ) : null}

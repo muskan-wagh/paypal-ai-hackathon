@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Mail, ShieldCheck } from "lucide-react";
 import Brand from "@/components/brand";
 import InvitationActions from "@/components/invitation-actions";
 import StatusChip from "@/components/status-chip";
@@ -53,40 +53,50 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     <InviteFrame>
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand">
             Milestone invitation · from {invite.inviterName}
           </p>
-          <h1 className="mt-1 text-xl font-bold text-neutral-900">{invite.milestone.title}</h1>
+          <h1 className="mt-1.5 text-xl font-bold tracking-[-0.02em] text-neutral-900">
+            {invite.milestone.title}
+          </h1>
           {invite.message && (
-            <p className="mt-2 rounded-lg bg-brand-wash p-3 text-sm text-neutral-600">
+            <p className="mt-2 rounded-xl bg-brand-wash p-3 text-sm leading-relaxed text-neutral-600">
               “{invite.message}”
             </p>
           )}
         </div>
 
         <dl className="grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-lg border border-neutral-200 bg-white p-3">
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Escrow funding</dt>
-            <dd className="mt-0.5 font-bold text-neutral-900">
+          <div className="card-surface rounded-xl p-3.5">
+            <dt className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">
+              <ShieldCheck className="h-3 w-3 text-brand" /> Escrow funding
+            </dt>
+            <dd className="mt-1 text-lg font-bold text-neutral-900 tnum">
               {formatMoney(invite.milestone.amountCents, invite.milestone.currency)}
             </dd>
           </div>
-          <div className="rounded-lg border border-neutral-200 bg-white p-3">
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Deadline</dt>
-            <dd className="mt-0.5 font-bold text-neutral-900">{formatDate(invite.milestone.deadline)}</dd>
+          <div className="card-surface rounded-xl p-3.5">
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">
+              Deadline
+            </dt>
+            <dd className="mt-1 text-lg font-bold text-neutral-900">
+              {formatDate(invite.milestone.deadline)}
+            </dd>
           </div>
         </dl>
 
-        <div className="rounded-lg border border-neutral-200 bg-white p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Brief</p>
-          <p className="mt-1 text-sm leading-relaxed text-neutral-600">{invite.milestone.brief}</p>
-          <p className="mt-2 text-xs text-neutral-400">
+        <div className="card-surface rounded-xl p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-neutral-400">
+            Brief
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-neutral-600">{invite.milestone.brief}</p>
+          <p className="mt-2.5 text-xs text-neutral-400">
             The AI acceptance checklist is generated from this brief — you&apos;ll see every criterion
             before you accept.
           </p>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-3 text-sm">
+        <div className="card-surface flex items-center justify-between rounded-xl p-4 text-sm">
           <span className="text-neutral-600">Milestone status</span>
           <StatusChip status={invite.milestone.status as MilestoneStatus} />
         </div>
@@ -112,7 +122,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
           <div className="flex gap-2">
             <Link
               href="/login"
-              className="flex-1 rounded-lg bg-brand py-2.5 text-center text-sm font-semibold text-white transition hover:bg-brand-navy"
+              className="flex-1 rounded-lg bg-brand py-2.5 text-center text-sm font-semibold text-white shadow-[0_6px_16px_-6px_rgb(0_112_186/0.5)] transition hover:bg-brand-navy"
             >
               Log in to accept
             </Link>
@@ -138,9 +148,7 @@ function InviteFrame({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className="flex flex-1 items-start justify-center px-4 py-10">
-        <div className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
-          {children}
-        </div>
+        <div className="card-surface w-full max-w-lg rounded-2xl p-6 shadow-card sm:p-8">{children}</div>
       </main>
       <footer className="border-t border-neutral-200 bg-white py-3 text-center text-[11px] text-neutral-400">
         Sandbox environment — all payments are PayPal play money.

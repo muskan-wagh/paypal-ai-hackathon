@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { Plus } from "lucide-react";
+import { ArrowLeft, CalendarDays, Plus, Wallet } from "lucide-react";
 import MilestoneRow from "@/components/milestone-row";
+import PageHeader from "@/components/page-header";
+import EmptyState from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { getDatabase } from "@/db";
 import { milestones, projects } from "@/db/schema";
@@ -44,38 +46,52 @@ export default async function ProjectDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Project</p>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{project.title}</h1>
-          <p className="mt-1 max-w-2xl text-sm text-neutral-500">{project.description}</p>
-          <p className="mt-2 text-xs text-neutral-400">
-            {projectMilestones.length} milestone(s) · {formatMoney(value)} committed
-            {earliest ? ` · nearest deadline ${formatDate(earliest)}` : ""}
-          </p>
+      <Link
+        href="/client/projects"
+        className="inline-flex items-center gap-1 text-sm text-neutral-500 transition-colors hover:text-brand-navy"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> All projects
+      </Link>
+
+      <PageHeader
+        eyebrow="Project"
+        title={project.title}
+        description={project.description}
+        actions={
+          <Link href={`/client/projects/${project.id}/milestones/new`}>
+            <Button className="rounded-lg font-semibold shadow-sm">
+              <Plus className="h-4 w-4" /> Add milestone
+            </Button>
+          </Link>
+        }
+      >
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600">
+            <Wallet className="h-3.5 w-3.5 text-brand" />
+            {projectMilestones.length} milestone(s) ·{" "}
+            <span className="font-semibold tnum">{formatMoney(value)}</span> committed
+          </span>
+          {earliest ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600">
+              <CalendarDays className="h-3.5 w-3.5 text-brand" />
+              nearest deadline {formatDate(earliest)}
+            </span>
+          ) : null}
         </div>
-        <Link href={`/client/projects/${project.id}/milestones/new`}>
-          <Button className="rounded-lg font-semibold">
-            <Plus className="h-4 w-4" /> Add milestone
-          </Button>
-        </Link>
-      </div>
+      </PageHeader>
 
       <div className="space-y-3">
         {projectMilestones.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-10 text-center">
-            <p className="font-medium text-neutral-700">No milestones in this project yet</p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-neutral-500">
-              Add a milestone with a brief, amount and deadline. The AI turns your brief into an
-              acceptance checklist before you invite a freelancer.
-            </p>
-            <Link
-              href={`/client/projects/${project.id}/milestones/new`}
-              className="mt-4 inline-block"
-            >
-              <Button className="rounded-lg font-semibold">Add your first milestone</Button>
-            </Link>
-          </div>
+          <EmptyState
+            icon={Wallet}
+            title="No milestones in this project yet"
+            body="Add a milestone with a brief, amount and deadline. The AI turns your brief into an acceptance checklist before you invite a freelancer."
+            action={
+              <Link href={`/client/projects/${project.id}/milestones/new`}>
+                <Button className="rounded-lg font-semibold">Add your first milestone</Button>
+              </Link>
+            }
+          />
         ) : (
           projectMilestones.map((milestone) => (
             <MilestoneRow key={milestone.id} milestone={milestone} role="client" />

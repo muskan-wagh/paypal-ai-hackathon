@@ -32,7 +32,22 @@ export default async function FreelancerLayout({
   ];
 
   return (
-    <DashboardShell user={user} items={items}>
+    <DashboardShell
+      user={user}
+      items={items}
+      notifications={
+        pendingCount > 0
+          ? {
+              count: pendingCount,
+              href: "/freelancer/invitations",
+              label: `${pendingCount} pending invitation${pendingCount === 1 ? "" : "s"}`,
+            }
+          : { count: 0, href: "/freelancer/invitations", label: "Notifications" }
+      }
+      quickAction={
+        pendingCount > 0 ? { href: "/freelancer/invitations", label: "Review invites" } : undefined
+      }
+    >
       {children}
     </DashboardShell>
   );

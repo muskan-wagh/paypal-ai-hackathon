@@ -1,4 +1,15 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
+import {
+  Eye,
+  ListChecks,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
+import { BrandMark } from "@/components/brand";
+import { Reveal } from "@/components/motion";
+
+const HIGHLIGHT_ICONS = [Wallet, ListChecks, Eye, ShieldCheck];
 
 /** PayPal-style split auth shell: navy value panel + white form column. */
 export default function AuthShell({
@@ -18,42 +29,60 @@ export default function AuthShell({
   ];
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-      <aside className="hidden flex-col justify-between bg-brand-navy p-10 text-white lg:flex">
-        <div>
-          <p className="text-lg font-bold tracking-tight">
-            Proof<span className="text-brand-sky">Pay</span>
-          </p>
-          <h1 className="mt-10 max-w-md text-3xl font-bold leading-tight">
-            Freelance payments both sides can trust.
-          </h1>
-          <ul className="mt-8 space-y-5">
-            {highlights.map((item) => (
-              <li key={item.title} className="flex gap-3">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/15">
-                  <svg viewBox="0 0 20 20" className="h-3 w-3 text-brand-sky" fill="currentColor">
-                    <path d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.4 7.4a1 1 0 0 1-1.4 0L3.3 9.5a1 1 0 0 1 1.4-1.4l3.9 3.9 6.7-6.7a1 1 0 0 1 1.4 0Z" />
-                  </svg>
-                </span>
-                <div>
-                  <p className="text-sm font-semibold">{item.title}</p>
-                  <p className="text-sm text-white/70">{item.blurb}</p>
-                </div>
-              </li>
-            ))}
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-b from-[#00234d] via-[#002d6b] to-[#003087] p-10 text-white lg:flex">
+        <div className="bg-grid-dark mask-fade-y pointer-events-none absolute inset-0" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-20 top-1/3 h-72 w-72 rounded-full bg-brand-sky/15 blur-3xl"
+        />
+        <div className="relative">
+          <Link href="/" className="flex items-center gap-2.5">
+            <BrandMark className="h-8 w-8 rounded-[10px]" />
+            <span className="text-lg font-bold tracking-tight">
+              Proof<span className="text-brand-sky">Pay</span>
+            </span>
+          </Link>
+          <Reveal>
+            <h1 className="mt-12 max-w-md text-3xl font-bold leading-tight tracking-[-0.02em]">
+              Freelance payments both sides can trust.
+            </h1>
+          </Reveal>
+          <ul className="mt-10 space-y-6">
+            {highlights.map((item, i) => {
+              const Icon = HIGHLIGHT_ICONS[i];
+              return (
+                <Reveal key={item.title} delay={0.1 + i * 0.08}>
+                  <li className="flex gap-3.5">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15">
+                      <Icon className="h-4 w-4 text-brand-sky" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold">{item.title}</p>
+                      <p className="mt-0.5 text-sm text-white/60">{item.blurb}</p>
+                    </div>
+                  </li>
+                </Reveal>
+              );
+            })}
           </ul>
         </div>
-        <p className="text-xs text-white/50">
+        <p className="relative text-xs text-white/50">
           Sandbox demo — all payments are PayPal play money. Built for the PayPal AI Hackathon 2026.
         </p>
       </aside>
       <main className="flex items-center justify-center bg-white px-4 py-12 sm:px-8">
         <div className="w-full max-w-md">
-          <p className="text-lg font-bold tracking-tight text-brand-navy lg:hidden">
-            Proof<span className="text-brand">Pay</span>
-          </p>
-          <h2 className="mt-6 text-2xl font-bold text-neutral-900 lg:mt-0">{heading}</h2>
-          <p className="mt-1 text-sm text-neutral-500">{subheading}</p>
-          <div className="mt-6">{children}</div>
+          <Link href="/" className="flex items-center gap-2 lg:hidden">
+            <BrandMark className="h-7 w-7" />
+            <span className="text-lg font-bold tracking-tight text-brand-navy">
+              Proof<span className="text-brand">Pay</span>
+            </span>
+          </Link>
+          <h2 className="mt-6 text-[1.7rem] font-bold tracking-[-0.02em] text-neutral-900 lg:mt-0">
+            {heading}
+          </h2>
+          <p className="mt-1.5 text-sm text-neutral-500">{subheading}</p>
+          <div className="mt-7">{children}</div>
         </div>
       </main>
     </div>

@@ -52,15 +52,24 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ProofPay motion tokens — used by CSS-only ambient animation. */
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-float-slow: float 11s ease-in-out infinite;
+  --animate-float-late: float 9s ease-in-out 1.2s infinite;
+  --animate-pulse-ring: pulse-ring 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-orbit: orbit 26s linear infinite;
 }
 
+/* ProofPay brand — PayPal-inspired deep navy/blue */
 :root {
-  /* ProofPay brand — PayPal-inspired deep navy/blue */
   --brand-navy: #003087;
+  --brand-deep: #00234d;
   --brand: #0070ba;
   --brand-sky: #009cde;
   --brand-ink: #2c2e2f;
-  --brand-wash: #f5f7fa;
+  --brand-wash: #f6f8fb;
   --background: var(--brand-wash);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -79,11 +88,11 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: #0070ba;
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: #0070ba;
+  --chart-2: #009cde;
+  --chart-3: #003087;
+  --chart-4: #57c84d;
+  --chart-5: #ffc439;
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -93,6 +102,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* ProofPay elevation scale */
+  --shadow-soft: 0 1px 2px rgb(0 48 135 / 0.05), 0 1px 3px rgb(0 48 135 / 0.06);
+  --shadow-card: 0 1px 2px rgb(0 48 135 / 0.06), 0 4px 12px -2px rgb(0 48 135 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(0 48 135 / 0.07), 0 12px 28px -6px rgb(0 48 135 / 0.16);
+  --shadow-pop: 0 8px 20px -4px rgb(0 48 135 / 0.18), 0 24px 48px -12px rgb(0 48 135 / 0.22);
 }
 
 .dark {
@@ -137,6 +152,115 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-sans scroll-smooth;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--brand-sky) 30%, transparent);
+    color: var(--brand-navy);
+  }
+  /* Slim, unobtrusive scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(0 48 135 / 0.22) transparent;
+  }
+}
+
+@layer utilities {
+  /* --- ProofPay surfaces ------------------------------------------------ */
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-lift { box-shadow: var(--shadow-lift); }
+  .shadow-pop { box-shadow: var(--shadow-pop); }
+
+  /* Premium card treatment: hairline border + tinted shadow, lifts on hover */
+  .card-surface {
+    background: #fff;
+    border: 1px solid rgb(0 48 135 / 0.09);
+    box-shadow: var(--shadow-soft);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+  }
+  .card-hover:hover {
+    border-color: rgb(0 112 186 / 0.35);
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-2px);
+  }
+
+  /* Subtle blueprint grid for hero / CTA backgrounds */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(0 48 135 / 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(0 48 135 / 0.055) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  .bg-grid-dark {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  .bg-dots {
+    background-image: radial-gradient(rgb(0 48 135 / 0.14) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+  .mask-fade-y {
+    mask-image: linear-gradient(to bottom, transparent, black 14%, black 78%, transparent);
+  }
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 55%, transparent);
+  }
+
+  /* --- Type ------------------------------------------------------------- */
+  .text-gradient-brand {
+    background: linear-gradient(100deg, var(--brand-navy) 10%, var(--brand) 55%, var(--brand-sky) 95%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* --- Motion ----------------------------------------------------------- */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgb(0 156 222 / 0.35); }
+    70% { box-shadow: 0 0 0 9px rgb(0 156 222 / 0); }
+    100% { box-shadow: 0 0 0 0 rgb(0 156 222 / 0); }
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  @keyframes orbit {
+    from { transform: rotate(0deg) translateX(110px) rotate(0deg); }
+    to { transform: rotate(360deg) translateX(110px) rotate(-360deg); }
+  }
+
+  /* Skeleton shimmer used by loading.tsx routes */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgb(0 48 135 / 0.06);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.75), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+}
+
+/* Respect users who prefer reduced motion: kill ambient CSS animation. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

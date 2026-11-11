@@ -1,8 +1,11 @@
 import { desc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { ListChecks } from "lucide-react";
 import type { NavItem } from "@/components/dashboard-shell";
 import MilestoneRow from "@/components/milestone-row";
 import DashboardShell from "@/components/dashboard-shell";
+import PageHeader from "@/components/page-header";
+import EmptyState from "@/components/empty-state";
 import { getDatabase } from "@/db";
 import { milestones } from "@/db/schema";
 import { getSessionUser } from "@/lib/session";
@@ -37,22 +40,21 @@ export default async function MilestonesPage() {
   return (
     <DashboardShell user={user} items={nav}>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">All milestones</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Every milestone moves through AI checklist → invite → funding → proof → evaluation →
-            human approval → payout.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow={role === "client" ? "Client workspace" : "Freelancer workspace"}
+          title="All milestones"
+          description="Every milestone moves through AI checklist → invite → funding → proof → evaluation → human approval → payout."
+        />
         {rows.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-10 text-center">
-            <p className="font-medium text-neutral-700">Nothing here yet</p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-neutral-500">
-              {role === "client"
+          <EmptyState
+            icon={ListChecks}
+            title="Nothing here yet"
+            body={
+              role === "client"
                 ? "Create a project and add your first milestone to get started."
-                : "Milestones assigned to you will appear here."}
-            </p>
-          </div>
+                : "Milestones assigned to you will appear here."
+            }
+          />
         ) : (
           <div className="space-y-3">
             {rows.map(({ milestone }) => (
