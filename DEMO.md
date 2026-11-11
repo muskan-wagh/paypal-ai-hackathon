@@ -211,7 +211,10 @@ records — all read live from SQLite, nothing hardcoded in the UI.
 - `npm run db:reseed` wipes only demo records (demo users, `is_demo` milestones
   and everything with `DEMO-` PayPal ids) and reseeds — real registered
   accounts and their live milestones are preserved. `npm run db:reset` still
-  deletes and rebuilds the whole database.
+  deletes and rebuilds the whole database. On Render, the build runs
+  `npm run db:seed-if-empty`, which seeds only when the DB is empty — so the
+  first deploy boots with the demo workspace and later redeploys never wipe
+  judge-created accounts.
 
 ### Scripted walkthrough (≈ 2:40)
 

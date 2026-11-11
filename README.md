@@ -39,6 +39,9 @@ npm run db:reset
 npm run db:reseed
 # (restart `npm run dev` afterwards so the server reopens the fresh DB file)
 
+# Deployments (render.yaml): seeds automatically on the first boot via
+# `npm run db:seed-if-empty` — later redeploys never wipe created accounts.
+
 # 5. Run
 npm run dev
 # → http://localhost:3000  (log in: maya@ / dana@proofpay.dev — password demo1234)

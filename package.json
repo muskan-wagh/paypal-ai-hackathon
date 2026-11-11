@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:reset": "tsx scripts/db-reset.ts",
-    "db:reseed": "tsx scripts/seed-demo.ts"
+    "db:reseed": "tsx scripts/seed-demo.ts",
+    "db:seed-if-empty": "tsx scripts/seed-if-empty.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

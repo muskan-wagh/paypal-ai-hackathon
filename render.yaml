@@ -5,7 +5,7 @@ services:
     name: proofpay
     runtime: node
     plan: starter  # $7/mo — needed for persistent disk (SQLite)
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npm run build && npm run db:seed-if-empty
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
