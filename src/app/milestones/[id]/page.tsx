@@ -20,6 +20,7 @@ import {
   invitations,
 } from "@/db/schema";
 import StatusChip from "@/components/status-chip";
+import DemoBadge from "@/components/demo-badge";
 import Timeline from "@/components/timeline";
 import ChecklistGenerator from "@/components/checklist-generator";
 import FundButton from "@/components/fund-button";
@@ -28,6 +29,7 @@ import ProofSubmitForm from "@/components/proof-submit-form";
 import ApprovalPanel from "@/components/approval-panel";
 import PayoutButton from "@/components/payout-button";
 import { getSessionUser } from "@/lib/session";
+import { isDemoMilestone, isDemoPayout } from "@/lib/demo";
 import { formatMoney, formatTimestamp } from "@/lib/format";
 import { nextStepFor } from "@/lib/next-step";
 import { type MilestoneStatus } from "@/lib/state-machine";
@@ -125,7 +127,12 @@ export default async function MilestoneDetailPage({
     .orderBy(desc(submissions.createdAt));
 
   const submissionFileRows = await db
-    .select({ submissionId: files.submissionId, fileId: files.id, filename: files.filename })
+    .select({
+      submissionId: files.submissionId,
+      fileId: files.id,
+      filename: files.filename,
+      mimeType: files.mimeType,
+    })
     .from(files);
 
   const evaluationRows = await db
@@ -227,6 +234,7 @@ export default async function MilestoneDetailPage({
             </p>
           </div>
           <StatusChip status={status} />
+          {isDemoMilestone(milestone) ? <DemoBadge label="Demo data" className="ml-2 align-middle" /> : null}
         </div>
 
         {/* progress chain */}
@@ -325,7 +333,17 @@ export default async function MilestoneDetailPage({
               ) : null}
 
               {/* Owner: fund once the freelancer has accepted */}
-              {isOwner && status === "ACCEPTED" ? (
+              {isOwner && status === "ACCEPTED" && isDemoMilestone(milestone) ? (
+                <div className="mt-4 border-t border-neutral-100 pt-4">
+                  <p className="text-sm text-neutral-600">
+                    This milestone is part of the seeded demo. Funding is simulated with a sample
+                    PayPal order id (<code className="text-xs">DEMO-…</code>) — the funding step is
+                    intentionally disabled so demo data can never trigger a real PayPal payment. Create a
+                    live milestone to run the real flow.
+                  </p>
+                </div>
+              ) : null}
+              {isOwner && status === "ACCEPTED" && !isDemoMilestone(milestone) ? (
                 <div className="mt-4 border-t border-neutral-100 pt-4">
                   <p className="text-sm">
                     {row.freelancerName} accepted. Fund with PayPal{" "}
@@ -433,6 +451,35 @@ export default async function MilestoneDetailPage({
                           </li>
                         ))}
                     </ul>
+                    {submissionFileRows.some(
+                      (f) => f.submissionId === submission.id && f.mimeType.startsWith("image/"),
+                    ) ? (
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        {submissionFileRows
+                          .filter((f) => f.submissionId === submission.id && f.mimeType.startsWith("image/"))
+                          .map((f) => (
+                            <a
+                              key={f.fileId}
+                              href={`/api/files/${f.fileId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="group block overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 transition hover:border-brand/60"
+                              title={`Open ${f.filename}`}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={`/api/files/${f.fileId}`}
+                                alt={`Submitted proof: ${f.filename}`}
+                                className="aspect-video w-full bg-white object-cover object-top"
+                              />
+                              <span className="flex items-center justify-between px-2.5 py-1.5 text-[11px] text-neutral-500 group-hover:text-brand-navy">
+                                📎 {f.filename}
+                                <span className="font-semibold">Open ↗</span>
+                              </span>
+                            </a>
+                          ))}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </section>
@@ -488,26 +535,49 @@ export default async function MilestoneDetailPage({
               </section>
             ) : null}
 
-            {isOwner && status === "APPROVED" ? (
-              <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-                <h2 className="font-semibold text-neutral-900">Send payout</h2>
-                <p className="mt-1 text-xs text-neutral-500">
-                  Approved — release {amountLabel} to the freelancer via PayPal Payouts.
-                </p>
-                <div className="mt-3">
-                  <PayoutButton milestoneId={milestoneId} amountLabel={amountLabel} />
-                </div>
-              </section>
-            ) : null}
+              {isOwner && status === "APPROVED" && isDemoMilestone(milestone) ? (
+                <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                  <h2 className="flex items-center gap-2 font-semibold text-amber-900">
+                    Payout (sample transaction) <DemoBadge label="Payouts disabled" />
+                  </h2>
+                  <p className="mt-1 text-xs text-amber-700">
+                    In the live flow you would release {amountLabel} to the freelancer via PayPal
+                    Payouts here. This record is seeded demo data — the payout was inserted as a
+                    labelled sample (batch id <code>DEMO-…</code>) and the payout button is disabled
+                    so no PayPal call can be triggered from it.
+                  </p>
+                </section>
+              ) : null}
+              {isOwner && status === "APPROVED" && !isDemoMilestone(milestone) ? (
+                <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
+                  <h2 className="font-semibold text-neutral-900">Send payout</h2>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Approved — release {amountLabel} to the freelancer via PayPal Payouts.
+                  </p>
+                  <div className="mt-3">
+                    <PayoutButton milestoneId={milestoneId} amountLabel={amountLabel} />
+                  </div>
+                </section>
+              ) : null}
 
             {payoutRows.length > 0 ? (
               <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
                 <h2 className="font-semibold text-neutral-900">Payouts</h2>
                 {payoutRows.map((payout) => (
-                  <p key={payout.id} className="mt-2 text-sm text-neutral-700 first:mt-0">
-                    {payout.batchId} → {payout.receiver} · {formatMoney(payout.amountCents, milestone.currency)} ·{" "}
-                    <span className="font-semibold">{payout.status}</span>
-                  </p>
+                  <div key={payout.id} className="mt-2 text-sm text-neutral-700 first:mt-0">
+                    <p>
+                      {payout.batchId} → {payout.receiver} · {formatMoney(payout.amountCents, milestone.currency)} ·{" "}
+                      <span className="font-semibold">{payout.status}</span>
+                    </p>
+                    {isDemoPayout(payout) ? (
+                      <p className="mt-1 text-xs">
+                        <DemoBadge label="Sample transaction" />{" "}
+                        <span className="text-neutral-500">
+                          Seeded demo payout — no PayPal API call was made for this record.
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
                 ))}
               </section>
             ) : null}

@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { Banknote, Clock3, Inbox } from "lucide-react";
 import StatTile from "@/components/stat-tile";
+import DemoBadge from "@/components/demo-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getDatabase } from "@/db";
 import { milestones, payouts } from "@/db/schema";
+import { isDemoPayout } from "@/lib/demo";
 import { formatMoney, formatTimestamp } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
 
@@ -61,7 +63,9 @@ export default async function EarningsPage() {
         <div className="border-b border-neutral-100 px-5 py-4">
           <h2 className="font-semibold text-neutral-900">Payout history</h2>
           <p className="mt-0.5 text-xs text-neutral-500">
-            Each row is a PayPal Payouts batch created by the client after approval.
+            Each row is a PayPal Payouts batch created by the client after approval. Rows marked
+            “Sample” are seeded demo data (batch ids prefixed <code>DEMO-</code>) — no PayPal call was
+            made for them.
           </p>
         </div>
         {myPayouts.length === 0 ? (
@@ -82,7 +86,10 @@ export default async function EarningsPage() {
             <TableBody>
               {myPayouts.map((row) => (
                 <TableRow key={row.payout.id}>
-                  <TableCell className="font-mono text-xs text-neutral-600">{row.payout.batchId}</TableCell>
+                  <TableCell className="font-mono text-xs text-neutral-600">
+                    {row.payout.batchId}
+                    {isDemoPayout(row.payout) ? <DemoBadge label="Sample" className="ml-2" /> : null}
+                  </TableCell>
                   <TableCell className="hidden text-xs text-neutral-500 sm:table-cell">{row.payout.receiver}</TableCell>
                   <TableCell className="text-right font-semibold">
                     {formatMoney(row.payout.amountCents, row.currency)}

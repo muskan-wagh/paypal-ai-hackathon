@@ -35,6 +35,7 @@ export const DDL = [
     currency TEXT NOT NULL DEFAULT 'USD',
     deadline TEXT,
     status TEXT NOT NULL DEFAULT 'DRAFT',
+    is_demo INTEGER NOT NULL DEFAULT 0,
     paypal_order_id TEXT,
     paypal_capture_id TEXT,
     created_at INTEGER NOT NULL,
@@ -132,5 +133,10 @@ export const MIGRATIONS: Array<{ table: string; column: string; ddl: string }> =
     table: "milestones",
     column: "project_id",
     ddl: "ALTER TABLE milestones ADD COLUMN project_id INTEGER REFERENCES projects(id)",
+  },
+  {
+    table: "milestones",
+    column: "is_demo",
+    ddl: "ALTER TABLE milestones ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0",
   },
 ];

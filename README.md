@@ -31,12 +31,17 @@ npm install
 # 3. Configure (copy and fill in the values — see comments in the file)
 cp .env.example .env
 
-# 4. Seed the demo database (Maya = client, Dana = freelancer, two milestones)
+# 4. Seed the demo database (full demo workspace: 3 clients + freelancer, 5 projects,
+#    7 milestones spanning the whole workflow — see DEMO.md "Demo data & walkthrough")
 npm run db:reset
+
+# Re-seed only demo records later (preserves real registered accounts):
+npm run db:reseed
+# (restart `npm run dev` afterwards so the server reopens the fresh DB file)
 
 # 5. Run
 npm run dev
-# → http://localhost:3000  (log in: maya@proofpay.dev / dana@proofpay.dev — password demo1234)
+# → http://localhost:3000  (log in: maya@ / dana@proofpay.dev — password demo1234)
 ```
 
 Environment values (all from free accounts):
@@ -74,7 +79,9 @@ the on-screen timeline.
 
 **Auth**: real registration with bcrypt password hashing, wrapped in an HttpOnly
 HMAC-signed cookie `{userId, exp}`. Role checks enforced on every server route;
-demo logins seeded on `db:reset` (maya@ / dana@proofpay.dev, password `demo1234`).
+demo logins seeded on `db:reset` (maya@ / dana@proofpay.dev, password `demo1234`). Seeded
+demo milestones carry `is_demo = 1` and `DEMO-` PayPal ids; funding/payout endpoints
+refuse demo records, so sample data can never trigger a real PayPal call.
 
 ## Tech stack
 

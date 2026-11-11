@@ -31,12 +31,13 @@ npm install
 # 3. Configure (copy and fill in the values — see comments in the file)
 cp .env.example .env
 
-# 4. Seed the demo database (Maya = client, Dana = freelancer, demo project + 2 milestones)
+# 4. Seed the demo database (full demo workspace: 3 clients + Dana the freelancer,
+#    5 projects, 7 milestones across the whole workflow — see "Demo data" below)
 npm run db:reset
 
 # 5. Run
 npm run dev
-# → http://localhost:3000  (log in: maya@proofpay.dev / dana@proofpay.dev — password demo1234)
+# → http://localhost:3000  (log in: maya@/marcus@/priya@/dana@proofpay.dev — password demo1234)
 ```
 
 Environment values (all from free accounts):
@@ -158,52 +159,75 @@ Dana = freelancer). Role checks enforced on every server route.
 
 ## Demo walkthrough
 
-See `DEMO.md` for the scripted walkthrough and test credentials.
+See the **Demo data & walkthrough** section below — the database is pre-seeded
+with a realistic demo workspace so judges land on a populated dashboard.
 
 ## License
 
-MIT — see `LICENSE`.<|end|><|start|>advisor to=bash<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="command">
-cat > /home/maahi/Desktopp/paypal-ai-hackathon/DEMO.md << 'DEMOEOF'
-# ProofPay — Demo Walkthrough
+MIT — see `LICENSE`.
 
-## Test credentials (sandbox, no real money)
+## Demo data & walkthrough
 
-Real email + password accounts (bcrypt):
+### Seeded demo accounts (sandbox, no real money)
+
+Real bcrypt accounts; the login page has one-click "Fill" buttons:
 
 | Persona | Name | Role | Login |
 |---|---|---|---|
-| Client | Maya Chen | client | `maya@proofpay.dev` / `demo1234` |
+| Client 1 | Maya Chen | client | `maya@proofpay.dev` / `demo1234` |
+| Client 2 | Marcus Webb | client | `marcus@proofpay.dev` / `demo1234` |
+| Client 3 | Priya Sharma | client | `priya@proofpay.dev` / `demo1234` |
 | Freelancer | Dana Rivera | freelancer | `dana@proofpay.dev` / `demo1234` |
 
-(The login page has one-click "Fill" buttons for both demo accounts.)
+### What's pre-seeded (npm run db:reset / db:reseed)
 
-Sandbox PayPal buyer: the US personal account (`sb-…@personal.example.com`).
-Sandbox PayPal seller/merchant: the US business account attached to the `proofpay-us` app.
+`scripts/demo-data.ts` seeds 5 realistic projects and 7 milestones spanning the
+entire workflow, all assigned to Dana so the freelancer dashboard is fully
+populated out of the box:
 
-## Free access for judges
+| Milestone | Status | Shows the judge |
+|---|---|---|
+| Landing page hero & product showcase (Nimbus Store) | `FUNDED` | Active milestone, deadline in 5 days, awaiting proof |
+| Analytics charts & KPI tiles (Pulseboard) | `FUNDED` | Second active project, deadline in 12 days |
+| Dashboard UI implementation (Pulseboard) | `EVALUATED` | Submitted proof + completed AI evaluation (partial, 88/100) awaiting client approval |
+| Payments & invoices REST integration (Orbit CRM) | `PAID` | **Complete showcase**: submission with screenshot proof, full-pass AI evaluation (96/100), client approval, successful payout |
+| Responsive portfolio — mobile pass (Brightlane) | `REJECTED` | Revision flow: AI found misses, client left resubmission notes |
+| Lighthouse performance budget (Northwind) | `ACCEPTED` | Client-side funding step |
+| Image lazy-loading & caching headers (Northwind) | `INVITED` | Pending invitation waiting in Dana's inbox |
 
-- Hosted demo URL: (add after deployment)
-- Repo: public, MIT license, visible in About
-- All materials in English
-- Test credentials above work through Dec 15, 2026
-- No expiring credentials
+Each milestone carries a full `events` audit trail, an AI acceptance checklist,
+and (where applicable) submissions, per-item AI evaluation results and payout
+records — all read live from SQLite, nothing hardcoded in the UI.
 
-## Scripted walkthrough (≈ 2:40)
+### Demo vs. real PayPal — hard separation
 
-1. **Log in as Maya (`maya@proofpay.dev`)** → client dashboard (stats + next-step hints)
-2. **New project → add milestone** ("E2E checkout card", $50, short brief) → DRAFT
-3. **Generate the AI acceptance checklist** (OpenRouter / nemotron) → CHECKLISTED
-4. **Invite** `dana@proofpay.dev` from the milestone page → INVITED (invite lands in the
-   freelancer's dashboard *and* as a shareable link)
-5. **Log in as Dana (`dana@proofpay.dev`)** → invitation card → **Accept** → ACCEPTED
-6. **Switch to Maya** → fund the milestone:
-   real sandbox popup → approve $50.00 → FUNDED
-7. **Switch to Dana** → open the funded milestone → submit proof (screenshot + notes)
-   - AI evaluates against the checklist → per-item pass/partial/fail + score 0–100
-   - Milestone → EVALUATED
-8. **Switch to Maya** → review the AI verdict → **Approve** → APPROVED
-9. **Send PayPal payout** → real PayPal Payouts API → batch created → PAID
-   - Dana's Earnings page + Maya's Payments page both show the batch ID + status
+- Every seeded milestone carries `is_demo = 1` in the database; every seeded
+  PayPal identifier (order, capture, payout batch) is prefixed `DEMO-`.
+- UI marks: milestone rows and detail pages show an amber **Demo data** chip;
+  seeded payouts are labelled **Sample transaction**.
+- API guards: the funding (`/orders`) and payout (`/payout`) routes refuse any
+  demo record with `409 DEMO_RECORD`, so a demo milestone can **never** trigger
+  a PayPal API call — no real money can move from seeded data, even by accident.
+- `npm run db:reseed` wipes only demo records (demo users, `is_demo` milestones
+  and everything with `DEMO-` PayPal ids) and reseeds — real registered
+  accounts and their live milestones are preserved. `npm run db:reset` still
+  deletes and rebuilds the whole database.
+
+### Scripted walkthrough (≈ 2:40)
+
+1. **Log in as Dana (`dana@proofpay.dev`)** → fully populated freelancer
+   dashboard: earnings, pending payments, upcoming deadlines, activity and
+   payout history.
+2. **Open "Payments & invoices REST integration"** (PAID) → the complete
+   end-to-end example: proof screenshots, per-item AI evaluation, approval and
+   sample payout.
+3. **Open the EVALUATED milestone** → review the AI verdict (partial, 88/100)
+   with per-item explanations.
+4. **Switch to Maya (`maya@proofpay.dev`)** → accept an invite flow with a live
+   project: new project → milestone → AI checklist → invite → fund via sandbox
+   popup → Dana submits proof → AI evaluates → approve → PayPal payout.
+5. Dana's Earnings page shows the real sandbox batch alongside the labelled
+   sample rows.
 
 ## Key moments for judges
 
@@ -218,6 +242,7 @@ Sandbox PayPal seller/merchant: the US business account attached to the `proofpa
 - Decline path: the capture route supports `PayPal-Mock-Response: {"mock_application_codes":"INSTRUMENT_DECLINED"}`
 - Amount integrity: a $2 order cannot be captured against a $250 milestone (server-verified)
 - Access control: freelancer cannot reach approve/fund/payout endpoints (403)
+- Demo safety: funding/payout endpoints return `409 DEMO_RECORD` for seeded demo milestones
 
 ## Edge cases handled
 
@@ -226,6 +251,5 @@ Sandbox PayPal seller/merchant: the US business account attached to the `proofpa
 - AI failure: milestone stays in current state, retry button provided
 - Declined payment: friendly retry UI, no raw JSON dump
 - Missing freelancer email: clear error message
-- Empty milestone list: friendly empty state
-DEMOEOF
-echo "DEMO.md written"
+- Empty milestone list: friendly empty state (the seeded demo workspace avoids
+  this for judges entirely)

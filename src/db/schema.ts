@@ -40,6 +40,8 @@ export const milestones = sqliteTable("milestones", {
   deadline: text("deadline"), // ISO date
   /** State machine — see src/lib/state-machine.ts (enforced server-side only). */
   status: text("status").notNull().default("DRAFT"),
+  /** 1 = seeded demo/sample record — never eligible for real PayPal calls. */
+  isDemo: integer("is_demo").notNull().default(0),
   paypalOrderId: text("paypal_order_id"),
   paypalCaptureId: text("paypal_capture_id"),
   createdAt: integer("created_at").notNull(),

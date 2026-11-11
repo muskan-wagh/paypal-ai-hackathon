@@ -2,12 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { desc, eq, sql } from "drizzle-orm";
 import { ArrowRight, Banknote, Clock3, FolderKanban, Zap } from "lucide-react";
+import DemoBadge from "@/components/demo-badge";
 import MilestoneRow from "@/components/milestone-row";
 import StatTile from "@/components/stat-tile";
 import { Button } from "@/components/ui/button";
 import { eventLabel } from "@/components/timeline";
 import { getDatabase } from "@/db";
 import { events, milestones, payouts, projects } from "@/db/schema";
+import { isDemoMilestone } from "@/lib/demo";
 import { formatMoney, formatTimestamp } from "@/lib/format";
 import { getSessionUser } from "@/lib/session";
 
@@ -61,14 +63,18 @@ export default async function ClientDashboard() {
   const waitingCount = myMilestones.filter((m) => WAITING_STATUSES.includes(m.status)).length;
   const paidTotal = Number(paidRow?.total ?? 0);
   const projectTitleById = new Map(myProjects.map((p) => [p.id, p.title]));
+  const hasDemoData = myMilestones.some(isDemoMilestone);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
-            Welcome back, {user.name.split(" ")[0]}
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+              Welcome back, {user.name.split(" ")[0]}
+            </h1>
+            {hasDemoData ? <DemoBadge label="Demo workspace" className="mt-1" /> : null}
+          </div>
           <p className="mt-1 text-sm text-neutral-500">
             Your milestones, escrow funding and payout activity at a glance.
           </p>
@@ -79,6 +85,21 @@ export default async function ClientDashboard() {
           </Button>
         </Link>
       </div>
+
+      {hasDemoData ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <p className="font-semibold">Sample data</p>
+          <p className="mt-0.5 text-amber-700">
+            This workspace is seeded with demo projects so you can explore a complete ProofPay
+            workflow. Records marked{" "}
+            <span className="mx-0.5 inline-block align-middle">
+              <DemoBadge />
+            </span>{" "}
+            are sample transactions — PayPal ids are prefixed <code>DEMO-</code> and funding/payout
+            calls are disabled for them, so no real money can ever move.
+          </p>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile

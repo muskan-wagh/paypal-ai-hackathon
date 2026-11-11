@@ -4,6 +4,7 @@ import { getDatabase } from "@/db";
 import { milestones } from "@/db/schema";
 import { writeEvent } from "@/db/log";
 import { getSessionUser } from "@/lib/session";
+import { isDemoMilestone } from "@/lib/demo";
 import { createOrder, spikeErrorResponse } from "@/lib/paypal";
 
 /**
@@ -39,6 +40,19 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         ok: false,
         code: "INVALID_STATE",
         message: `Milestone must be ACCEPTED (freelancer bound via invite) to fund — currently ${milestone.status}`,
+      },
+      { status: 409 },
+    );
+  }
+  // Hard guard: seeded demo records must NEVER reach PayPal. The demo shows
+  // escrow via clearly-labelled sample order ids (DEMO- prefix).
+  if (isDemoMilestone(milestone)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "DEMO_RECORD",
+        message:
+          "This is a seeded demo milestone (sample data). Funding is disabled for demo records so they can never trigger a real PayPal order.",
       },
       { status: 409 },
     );

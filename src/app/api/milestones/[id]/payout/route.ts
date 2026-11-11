@@ -5,6 +5,7 @@ import { milestones, payouts, users } from "@/db/schema";
 import { writeEvent } from "@/db/log";
 import { getSessionUser } from "@/lib/session";
 import { assertTransition } from "@/lib/state-machine";
+import { isDemoMilestone } from "@/lib/demo";
 import { createPayout, spikeErrorResponse } from "@/lib/paypal";
 
 /**
@@ -35,6 +36,19 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (milestone.status !== "APPROVED") {
     return NextResponse.json(
       { ok: false, code: "INVALID_STATE", message: `Milestone must be APPROVED to pay out (currently ${milestone.status})` },
+      { status: 409 },
+    );
+  }
+  // Hard guard: seeded demo records must NEVER reach PayPal. The payout shown
+  // in the demo was inserted by the seed script as a labelled sample.
+  if (isDemoMilestone(milestone)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "DEMO_RECORD",
+        message:
+          "This is a seeded demo milestone (sample transaction, batch id prefixed DEMO-). Payouts are disabled for demo records so they can never trigger a real PayPal transfer.",
+      },
       { status: 409 },
     );
   }
