@@ -23,8 +23,8 @@ export default async function NewMilestonePage({
   if (!user) redirect("/login");
   if (user.role !== "client") redirect("/dashboard");
 
-  const db = getDatabase();
-  const project = db.select().from(projects).where(eq(projects.id, projectId)).get();
+  const db = await getDatabase();
+  const project = await db.select().from(projects).where(eq(projects.id, projectId)).get();
   if (!project) notFound();
   if (project.clientId !== user.id) notFound();
 

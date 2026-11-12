@@ -38,16 +38,16 @@ function daysUntil(deadline: string | null): number | null {
 export default async function FreelancerDashboard() {
   const user = await getSessionUser();
   if (!user || user.role !== "freelancer") redirect("/dashboard");
-  const db = getDatabase();
+  const db = await getDatabase();
 
-  const assigned = db
+  const assigned = await db
     .select()
     .from(milestones)
     .where(eq(milestones.freelancerId, user.id))
     .orderBy(desc(milestones.updatedAt))
     .all();
 
-  const pendingInvites = db
+  const pendingInvites = await db
     .select({
       token: invitations.token,
       message: invitations.message,
@@ -66,13 +66,13 @@ export default async function FreelancerDashboard() {
 
   // Project + client context for the milestone cards (joined through the
   // freelancer's own milestones — never other users' data).
-  const projectRows = db
+  const projectRows = await db
     .selectDistinct({ id: projects.id, title: projects.title })
     .from(projects)
     .innerJoin(milestones, eq(milestones.projectId, projects.id))
     .where(eq(milestones.freelancerId, user.id))
     .all();
-  const clientRows = db
+  const clientRows = await db
     .selectDistinct({ id: users.id, name: users.name })
     .from(users)
     .innerJoin(milestones, eq(milestones.clientId, users.id))
@@ -81,7 +81,7 @@ export default async function FreelancerDashboard() {
   const projectTitleById = new Map(projectRows.map((p) => [p.id, p.title]));
   const clientNameById = new Map(clientRows.map((c) => [c.id, c.name]));
 
-  const myPayouts = db
+  const myPayouts = await db
     .select({ payout: payouts, currency: milestones.currency, milestoneTitle: milestones.title })
     .from(payouts)
     .innerJoin(milestones, eq(payouts.milestoneId, milestones.id))
@@ -89,7 +89,7 @@ export default async function FreelancerDashboard() {
     .orderBy(desc(payouts.createdAt))
     .all();
 
-  const recentEvents = db
+  const recentEvents = await db
     .select({
       id: events.id,
       type: events.type,

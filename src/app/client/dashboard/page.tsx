@@ -40,29 +40,29 @@ const STATUS_TONES: Record<MilestoneStatus, string> = {
 export default async function ClientDashboard() {
   const user = await getSessionUser();
   if (!user || user.role !== "client") redirect("/dashboard");
-  const db = getDatabase();
+  const db = await getDatabase();
 
-  const myProjects = db
+  const myProjects = await db
     .select()
     .from(projects)
     .where(eq(projects.clientId, user.id))
     .orderBy(desc(projects.updatedAt))
     .all();
-  const myMilestones = db
+  const myMilestones = await db
     .select()
     .from(milestones)
     .where(eq(milestones.clientId, user.id))
     .orderBy(desc(milestones.updatedAt))
     .all();
 
-  const paidRow = db
+  const paidRow = await db
     .select({ total: sql<number>`coalesce(sum(${payouts.amountCents}), 0)` })
     .from(payouts)
     .innerJoin(milestones, eq(payouts.milestoneId, milestones.id))
     .where(eq(milestones.clientId, user.id))
     .get();
 
-  const recentEvents = db
+  const recentEvents = await db
     .select({
       id: events.id,
       type: events.type,

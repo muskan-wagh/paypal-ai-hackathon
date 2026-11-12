@@ -6,7 +6,7 @@ import { createProject, listProjectsFor } from "@/server/projects";
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
-  return NextResponse.json({ ok: true, ...listProjectsFor(user) });
+  return NextResponse.json({ ok: true, ...(await listProjectsFor(user)) });
 }
 
 /** POST /api/projects — create a project (clients only, server-validated). */
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const result = createProject({
+  const result = await createProject({
     user,
     title: body.title,
     description: typeof body.description === "string" ? body.description : "",

@@ -25,13 +25,13 @@ export default async function ProjectDetailPage({
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (user.role !== "client") redirect("/dashboard");
-  const db = getDatabase();
+  const db = await getDatabase();
 
-  const project = db.select().from(projects).where(eq(projects.id, projectId)).get();
+  const project = await db.select().from(projects).where(eq(projects.id, projectId)).get();
   if (!project) notFound();
   if (project.clientId !== user.id) notFound();
 
-  const projectMilestones = db
+  const projectMilestones = await db
     .select()
     .from(milestones)
     .where(eq(milestones.projectId, projectId))

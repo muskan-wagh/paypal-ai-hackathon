@@ -195,15 +195,16 @@ function terminalSvg(): string {
 /** Delete every demo record: demo users (@proofpay.dev), their projects and
  * milestones with all children, plus anything flagged is_demo or carrying
  * DEMO- PayPal ids. Real (non-demo) accounts are untouched. */
-export function wipeDemoData(db: Db): void {
-  const demoUserIds = db
-    .select({ id: schema.users.id })
-    .from(schema.users)
-    .where(like(schema.users.email, `%${DEMO_EMAIL_DOMAIN}`))
-    .all()
-    .map((u) => u.id);
+export async function wipeDemoData(db: Db): Promise<void> {
+  const demoUserIds = (
+    await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(like(schema.users.email, `%${DEMO_EMAIL_DOMAIN}`))
+      .all()
+  ).map((u) => u.id);
 
-  const allMilestones = db.select().from(schema.milestones).all();
+  const allMilestones = await db.select().from(schema.milestones).all();
   const milestoneIds = Array.from(
     new Set(
       allMilestones
@@ -219,45 +220,47 @@ export function wipeDemoData(db: Db): void {
   );
 
   if (milestoneIds.length > 0) {
-    const submissionIds = db
-      .select({ id: schema.submissions.id })
-      .from(schema.submissions)
-      .where(inArray(schema.submissions.milestoneId, milestoneIds))
-      .all()
-      .map((s) => s.id);
-    const evaluationIds = db
-      .select({ id: schema.evaluations.id })
-      .from(schema.evaluations)
-      .where(inArray(schema.evaluations.milestoneId, milestoneIds))
-      .all()
-      .map((e) => e.id);
+    const submissionIds = (
+      await db
+        .select({ id: schema.submissions.id })
+        .from(schema.submissions)
+        .where(inArray(schema.submissions.milestoneId, milestoneIds))
+        .all()
+    ).map((s) => s.id);
+    const evaluationIds = (
+      await db
+        .select({ id: schema.evaluations.id })
+        .from(schema.evaluations)
+        .where(inArray(schema.evaluations.milestoneId, milestoneIds))
+        .all()
+    ).map((e) => e.id);
 
-    // Delete children before parents (better-sqlite3 enforces FKs by default).
+    // Delete children before parents (libSQL enforces FKs by default).
     // order: evaluation_items → evaluations → files → submissions →
     //        checklist_items / invitations / payouts / events → milestones →
     //        projects → users
     if (evaluationIds.length > 0) {
-      db.delete(schema.evaluationItems).where(inArray(schema.evaluationItems.evaluationId, evaluationIds)).run();
+      await db.delete(schema.evaluationItems).where(inArray(schema.evaluationItems.evaluationId, evaluationIds)).run();
     }
     if (evaluationIds.length > 0) {
-      db.delete(schema.evaluations).where(inArray(schema.evaluations.id, evaluationIds)).run();
+      await db.delete(schema.evaluations).where(inArray(schema.evaluations.id, evaluationIds)).run();
     }
     if (submissionIds.length > 0) {
-      db.delete(schema.files).where(inArray(schema.files.submissionId, submissionIds)).run();
+      await db.delete(schema.files).where(inArray(schema.files.submissionId, submissionIds)).run();
     }
     if (submissionIds.length > 0) {
-      db.delete(schema.submissions).where(inArray(schema.submissions.id, submissionIds)).run();
+      await db.delete(schema.submissions).where(inArray(schema.submissions.id, submissionIds)).run();
     }
-    db.delete(schema.checklistItems).where(inArray(schema.checklistItems.milestoneId, milestoneIds)).run();
-    db.delete(schema.invitations).where(inArray(schema.invitations.milestoneId, milestoneIds)).run();
-    db.delete(schema.payouts).where(inArray(schema.payouts.milestoneId, milestoneIds)).run();
-    db.delete(schema.events).where(inArray(schema.events.milestoneId, milestoneIds)).run();
-    db.delete(schema.milestones).where(inArray(schema.milestones.id, milestoneIds)).run();
+    await db.delete(schema.checklistItems).where(inArray(schema.checklistItems.milestoneId, milestoneIds)).run();
+    await db.delete(schema.invitations).where(inArray(schema.invitations.milestoneId, milestoneIds)).run();
+    await db.delete(schema.payouts).where(inArray(schema.payouts.milestoneId, milestoneIds)).run();
+    await db.delete(schema.events).where(inArray(schema.events.milestoneId, milestoneIds)).run();
+    await db.delete(schema.milestones).where(inArray(schema.milestones.id, milestoneIds)).run();
   }
 
   if (demoUserIds.length > 0) {
-    db.delete(schema.projects).where(inArray(schema.projects.clientId, demoUserIds)).run();
-    db.delete(schema.users).where(inArray(schema.users.id, demoUserIds)).run();
+    await db.delete(schema.projects).where(inArray(schema.projects.clientId, demoUserIds)).run();
+    await db.delete(schema.users).where(inArray(schema.users.id, demoUserIds)).run();
   }
 }
 
@@ -267,7 +270,7 @@ export type SeedResult = { userIds: { maya: number; dana: number }; milestoneIds
  * Seed the full demo dataset into a schema-ready database.
  * Call wipeDemoData() first to make this idempotent.
  */
-export function seedDemoData(db: Db): SeedResult {
+export async function seedDemoData(db: Db): Promise<SeedResult> {
   const now = Date.now();
   const t = (msAgo: number) => now - msAgo;
   const iso = (msFromNow: number) => new Date(now + msFromNow).toISOString().slice(0, 10);
@@ -275,7 +278,7 @@ export function seedDemoData(db: Db): SeedResult {
   const aiModel = process.env.AI_MODEL?.trim() || "seed-demo";
 
   /* ---------------- users ---------------- */
-  const insertedUsers = db
+  const insertedUsers = await db
     .insert(schema.users)
     .values([
       {
@@ -320,7 +323,7 @@ export function seedDemoData(db: Db): SeedResult {
   const dana = byName("Dana Rivera");
 
   /* ---------------- projects ---------------- */
-  const projects = db
+  const projects = await db
     .insert(schema.projects)
     .values([
       {
@@ -624,7 +627,7 @@ export function seedDemoData(db: Db): SeedResult {
     const invited = spec.status === "INVITED";
     const escrowed = ["FUNDED", "SUBMITTED", "EVALUATED", "APPROVED", "REJECTED", "PAID"].includes(spec.status);
     const slug = spec.title.replace(/[^a-zA-Z0-9]+/g, "").slice(0, 8).toUpperCase();
-    const ms = db
+    const ms = await db
       .insert(schema.milestones)
       .values({
         clientId: proj.clientId,
@@ -646,8 +649,8 @@ export function seedDemoData(db: Db): SeedResult {
       .get();
     idOf.set(spec.title, ms.id);
 
-    spec.checklist.forEach((item, index) => {
-      db.insert(schema.checklistItems)
+    for (const [index, item] of spec.checklist.entries()) {
+      await db.insert(schema.checklistItems)
         .values({
           milestoneId: ms.id,
           title: item.title,
@@ -657,7 +660,7 @@ export function seedDemoData(db: Db): SeedResult {
           createdAt: t(spec.createdAgo + 2 * hour),
         })
         .run();
-    });
+    }
   }
 
   const clientName = new Map([
@@ -668,14 +671,14 @@ export function seedDemoData(db: Db): SeedResult {
   const clientOf = new Map(specs.map((s) => [s.title, project(s.projectTitle).clientId]));
 
   /* ---------------- event ledger ---------------- */
-  const addEvent = (
+  const addEvent = async (
     milestoneTitle: string,
     type: string,
     actor: string,
     createdAt: number,
     payload: Record<string, unknown> = {},
   ) => {
-    db.insert(schema.events)
+    await db.insert(schema.events)
       .values({
         milestoneId: idOf.get(milestoneTitle)!,
         type,
@@ -701,33 +704,33 @@ export function seedDemoData(db: Db): SeedResult {
     // Later flow steps happen CLOSER to now, hence the subtractive offsets.
     const submitAgo = spec.submitAgo ?? spec.createdAgo - 5 * day;
     const evalAgo = submitAgo - hour;
-    addEvent(spec.title, "DRAFT_CREATED", cName, t(spec.createdAgo), { amountCents: spec.amountCents, demo: true });
-    addEvent(spec.title, "CHECKLIST_CREATED", "ai", t(spec.createdAgo - 2 * hour), {
+    await addEvent(spec.title, "DRAFT_CREATED", cName, t(spec.createdAgo), { amountCents: spec.amountCents, demo: true });
+    await addEvent(spec.title, "CHECKLIST_CREATED", "ai", t(spec.createdAgo - 2 * hour), {
       model: aiModel,
       items: spec.checklist.length,
       demo: true,
     });
-    addEvent(spec.title, "INVITED", cName, t(spec.createdAgo - 5 * hour), {
+    await addEvent(spec.title, "INVITED", cName, t(spec.createdAgo - 5 * hour), {
       invitee: "Dana Rivera",
       ...(through === "INVITED" ? { demo: true } : {}),
     });
     if (through === "INVITED") continue;
-    addEvent(spec.title, "ACCEPTED", "Dana Rivera", t(spec.createdAgo - 1 * day), {});
+    await addEvent(spec.title, "ACCEPTED", "Dana Rivera", t(spec.createdAgo - 1 * day), {});
     if (through === "ACCEPTED") continue;
-    addEvent(spec.title, "FUNDED", cName, t(spec.createdAgo - 1.5 * day), {
+    await addEvent(spec.title, "FUNDED", cName, t(spec.createdAgo - 1.5 * day), {
       amountCents: spec.amountCents,
       demoOrderId: `DEMO-ORDER-${spec.title.replace(/[^a-zA-Z0-9]+/g, "").slice(0, 8).toUpperCase()}`,
       demo: true,
     });
     if (through === "FUNDED") continue;
-    addEvent(spec.title, "SUBMITTED", "Dana Rivera", t(submitAgo), { files: 1 });
+    await addEvent(spec.title, "SUBMITTED", "Dana Rivera", t(submitAgo), { files: 1 });
     if (through === "REJECTED") {
-      addEvent(spec.title, "EVALUATED", "ai", t(evalAgo), {
+      await addEvent(spec.title, "EVALUATED", "ai", t(evalAgo), {
         verdict: "fail",
         score: 68,
         demo: true,
       });
-      addEvent(spec.title, "REJECTED", cName, t(spec.rejectAgo ?? spec.createdAgo - 8 * day), {
+      await addEvent(spec.title, "REJECTED", cName, t(spec.rejectAgo ?? spec.createdAgo - 8 * day), {
         notes:
           "Looks close, but two things before I approve:\n" +
           "1. The sticky 'Hire me' CTA is missing on the case-study template.\n" +
@@ -737,15 +740,15 @@ export function seedDemoData(db: Db): SeedResult {
       });
       continue;
     }
-    addEvent(spec.title, "EVALUATED", "ai", t(evalAgo), {
+    await addEvent(spec.title, "EVALUATED", "ai", t(evalAgo), {
       verdict: spec.status === "PAID" ? "pass" : "partial",
       score: spec.status === "PAID" ? 96 : 88,
       demo: true,
     });
     if (spec.status === "PAID") {
       const paidAgo = spec.paidAgo ?? spec.createdAgo - 9 * day;
-      addEvent(spec.title, "APPROVED", cName, t(paidAgo), { demo: true });
-      addEvent(spec.title, "PAID", cName, t(paidAgo - hour), {
+      await addEvent(spec.title, "APPROVED", cName, t(paidAgo), { demo: true });
+      await addEvent(spec.title, "PAID", cName, t(paidAgo - hour), {
         batchId: "DEMO-BATCH-PP001",
         status: "SUCCESS",
         demo: true,
@@ -756,7 +759,7 @@ export function seedDemoData(db: Db): SeedResult {
   /* ---------------- pending invitation ---------------- */
   const invitedSpec = specs.find((s) => s.status === "INVITED")!;
   const token = Buffer.from(`demo-invite-${idOf.get(invitedSpec.title)}`).toString("base64url");
-  db.insert(schema.invitations)
+  await db.insert(schema.invitations)
     .values({
       milestoneId: idOf.get(invitedSpec.title)!,
       inviterId: clientOf.get(invitedSpec.title)!,
@@ -771,8 +774,8 @@ export function seedDemoData(db: Db): SeedResult {
     .run();
 
   /* ---------------- submissions + proof files ---------------- */
-  const insertFile = (submissionId: number, filename: string, svg: string, mime = "image/svg+xml", ago = 2 * day) => {
-    db.insert(schema.files)
+  const insertFile = async (submissionId: number, filename: string, svg: string, mime = "image/svg+xml", ago = 2 * day) => {
+    await db.insert(schema.files)
       .values({
         submissionId,
         filename,
@@ -786,7 +789,7 @@ export function seedDemoData(db: Db): SeedResult {
 
   // 1) EVALUATED milestone (dashboard UI) — light + dark screenshots
   const evaluatedId = idOf.get(specs[2].title)!;
-  const evalSubmissionId = db
+  const evalSubmissionId = await db
     .insert(schema.submissions)
     .values({
       milestoneId: evaluatedId,
@@ -798,12 +801,12 @@ export function seedDemoData(db: Db): SeedResult {
     })
     .returning()
     .get();
-  insertFile(evalSubmissionId.id, "pulseboard-dashboard-light.svg", saasDashboardSvg("Analytics Overview", "#0070ba", false));
-  insertFile(evalSubmissionId.id, "pulseboard-dashboard-dark.svg", saasDashboardSvg("Analytics Overview", "#38bdf8", true));
+  await insertFile(evalSubmissionId.id, "pulseboard-dashboard-light.svg", saasDashboardSvg("Analytics Overview", "#0070ba", false));
+  await insertFile(evalSubmissionId.id, "pulseboard-dashboard-dark.svg", saasDashboardSvg("Analytics Overview", "#38bdf8", true));
 
   // 2) PAID milestone (REST integration) — terminal capture
   const paidId = idOf.get(specs[3].title)!;
-  const paidSubmissionId = db
+  const paidSubmissionId = await db
     .insert(schema.submissions)
     .values({
       milestoneId: paidId,
@@ -815,11 +818,11 @@ export function seedDemoData(db: Db): SeedResult {
     })
     .returning()
     .get();
-  insertFile(paidSubmissionId.id, "orbit-payments-integration-proof.svg", terminalSvg(), "image/svg+xml", 19 * day);
+  await insertFile(paidSubmissionId.id, "orbit-payments-integration-proof.svg", terminalSvg(), "image/svg+xml", 19 * day);
 
   // 3) REJECTED milestone — first (rejected) submission
   const rejectedId = idOf.get(specs[4].title)!;
-  const rejectedSubmissionId = db
+  const rejectedSubmissionId = await db
     .insert(schema.submissions)
     .values({
       milestoneId: rejectedId,
@@ -829,19 +832,21 @@ export function seedDemoData(db: Db): SeedResult {
     })
     .returning()
     .get();
-  insertFile(rejectedSubmissionId.id, "brightlane-portfolio-mobile-v1.svg", portfolioMobileSvg(), "image/svg+xml", 4 * day);
+  await insertFile(rejectedSubmissionId.id, "brightlane-portfolio-mobile-v1.svg", portfolioMobileSvg(), "image/svg+xml", 4 * day);
 
   /* ---------------- evaluations ---------------- */
-  const checklistFor = (milestoneId: number) =>
-    db
-      .select()
-      .from(schema.checklistItems)
-      .all()
+  const checklistFor = async (milestoneId: number) =>
+    (
+      await db
+        .select()
+        .from(schema.checklistItems)
+        .all()
+    )
       .filter((c) => c.milestoneId === milestoneId)
       .sort((a, b) => a.sortOrder - b.sortOrder);
 
   // EVALUATED milestone: 3 pass + 1 partial → verdict partial, score 88
-  const evalChecklist = checklistFor(evaluatedId);
+  const evalChecklist = await checklistFor(evaluatedId);
   const evalItemVerdicts: Array<["pass" | "partial" | "fail", string]> = [
     ["pass", "Sidebar with five nav items and a top-bar search field are clearly visible in both screenshots."],
     ["pass", "All four KPI cards (Active users, MRR, Churn, Uptime) are present with values and deltas."],
@@ -851,7 +856,7 @@ export function seedDemoData(db: Db): SeedResult {
       "tokens.dark.css was referenced in the note but only the light screenshot was visually confirmed; the dark tokens are plausible but not fully verifiable from the proof alone.",
     ],
   ];
-  const evalId = db
+  const evalId = await db
     .insert(schema.evaluations)
     .values({
       milestoneId: evaluatedId,
@@ -873,20 +878,20 @@ export function seedDemoData(db: Db): SeedResult {
     })
     .returning()
     .get();
-  evalItemVerdicts.forEach(([verdict, explanation], i) => {
-    db.insert(schema.evaluationItems)
+  for (const [i, [verdict, explanation]] of evalItemVerdicts.entries()) {
+    await db.insert(schema.evaluationItems)
       .values({ evaluationId: evalId.id, checklistItemId: evalChecklist[i].id, verdict, explanation })
       .run();
-  });
+  }
 
   // REJECTED milestone: 1 pass + 2 fail → verdict fail, score 68 (client rejected)
-  const rejChecklist = checklistFor(rejectedId);
+  const rejChecklist = await checklistFor(rejectedId);
   const rejItemVerdicts: Array<["pass" | "partial" | "fail", string]> = [
     ["pass", "Project cards stack full-width with visible gutters on the 393px viewport screenshot."],
     ["fail", "No sticky 'Hire me' CTA bar is visible on the case-study template screenshot."],
     ["fail", "Measured gutters are 12px; the acceptance criteria require 16px gutters and fully met 44px tap targets."],
   ];
-  const rejId = db
+  const rejId = await db
     .insert(schema.evaluations)
     .values({
       milestoneId: rejectedId,
@@ -902,21 +907,21 @@ export function seedDemoData(db: Db): SeedResult {
     })
     .returning()
     .get();
-  rejItemVerdicts.forEach(([verdict, explanation], i) => {
-    db.insert(schema.evaluationItems)
+  for (const [i, [verdict, explanation]] of rejItemVerdicts.entries()) {
+    await db.insert(schema.evaluationItems)
       .values({ evaluationId: rejId.id, checklistItemId: rejChecklist[i].id, verdict, explanation })
       .run();
-  });
+  }
 
   // PAID milestone: full-pass evaluation (the complete showcase example)
-  const paidChecklist = checklistFor(paidId);
+  const paidChecklist = await checklistFor(paidId);
   const paidItemVerdicts: Array<["pass" | "partial" | "fail", string]> = [
     ["pass", "Integration notes document the Idempotency-Key header on every POST /payments call."],
     ["pass", "Terminal capture shows HTTP 200 with \"status\": \"succeeded\" and a receipt URL."],
     ["pass", "Webhook handler verifies the Orbit-CRM-Signature HMAC before processing events."],
     ["pass", "Sync log shows 42 invoices reconciled with 0 errors and 2 successful webhook retries."],
   ];
-  const paidEvalId = db
+  const paidEvalId = await db
     .insert(schema.evaluations)
     .values({
       milestoneId: paidId,
@@ -933,14 +938,14 @@ export function seedDemoData(db: Db): SeedResult {
     })
     .returning()
     .get();
-  paidItemVerdicts.forEach(([verdict, explanation], i) => {
-    db.insert(schema.evaluationItems)
+  for (const [i, [verdict, explanation]] of paidItemVerdicts.entries()) {
+    await db.insert(schema.evaluationItems)
       .values({ evaluationId: paidEvalId.id, checklistItemId: paidChecklist[i].id, verdict, explanation })
       .run();
-  });
+  }
 
   /* ---------------- demo payout (sample transaction) ---------------- */
-  db.insert(schema.payouts)
+  await db.insert(schema.payouts)
     .values({
       milestoneId: paidId,
       batchId: "DEMO-BATCH-PP001",

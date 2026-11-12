@@ -18,8 +18,7 @@ export default async function MilestonesPage() {
 
   const role = user.role === "client" ? "client" : "freelancer";
 
-  const rows = await getDatabase()
-    .select({ milestone: milestones })
+  const rows = await (await getDatabase()).select({ milestone: milestones })
     .from(milestones)
     .where(role === "client" ? eq(milestones.clientId, user.id) : eq(milestones.freelancerId, user.id))
     .orderBy(desc(milestones.updatedAt));

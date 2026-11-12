@@ -9,11 +9,11 @@ import { milestones, projects, type User } from "@/db/schema";
 
 export type ServiceResult<T> = { ok: true; data: T } | { ok: false; code: string; message: string };
 
-export function createProject(input: {
+export async function createProject(input: {
   user: User;
   title: string;
   description?: string;
-}): ServiceResult<{ projectId: number }> {
+}): Promise<ServiceResult<{ projectId: number }>> {
   const title = input.title?.trim() ?? "";
   const description = input.description?.trim() ?? "";
   if (title.length < 3) {
@@ -23,20 +23,20 @@ export function createProject(input: {
     return { ok: false, code: "FORBIDDEN", message: "Only clients can create projects." };
   }
   const now = Date.now();
-  const result = getDatabase()
+  const result = await (await getDatabase())
     .insert(projects)
     .values({ clientId: input.user.id, title, description, createdAt: now, updatedAt: now })
     .run();
   return { ok: true, data: { projectId: Number(result.lastInsertRowid) } };
 }
 
-export function listProjectsFor(user: User) {
-  const db = getDatabase();
+export async function listProjectsFor(user: User) {
+  const db = await getDatabase();
   const projectRows =
     user.role === "client"
-      ? db.select().from(projects).where(eq(projects.clientId, user.id)).orderBy(desc(projects.updatedAt)).all()
+      ? await db.select().from(projects).where(eq(projects.clientId, user.id)).orderBy(desc(projects.updatedAt)).all()
       : [];
-  const milestoneRows = db
+  const milestoneRows = await db
     .select()
     .from(milestones)
     .where(eq(milestones.clientId, user.id))
@@ -45,21 +45,21 @@ export function listProjectsFor(user: User) {
   return { projects: projectRows, milestones: milestoneRows };
 }
 
-export function getProjectFor(user: User, projectId: number) {
-  const db = getDatabase();
-  const project = db.select().from(projects).where(eq(projects.id, projectId)).get();
+export async function getProjectFor(user: User, projectId: number) {
+  const db = await getDatabase();
+  const project = await db.select().from(projects).where(eq(projects.id, projectId)).get();
   if (!project) return { ok: false as const, code: "NOT_FOUND", message: "Project not found" };
   // Freelancers never see unassigned projects project listings.
   if (user.role !== "client" || project.clientId !== user.id) {
     return { ok: false as const, code: "FORBIDDEN", message: "You don't have access to this project" };
   }
-  const rows = db.select().from(milestones).where(eq(milestones.projectId, projectId)).orderBy(desc(milestones.updatedAt)).all();
+  const rows = await db.select().from(milestones).where(eq(milestones.projectId, projectId)).orderBy(desc(milestones.updatedAt)).all();
   return { ok: true as const, project, milestones: rows };
 }
 
 const MAX_AMOUNT = 100_000 * 100; // sandbox sanity ceiling
 
-export function createMilestone(input: {
+export async function createMilestone(input: {
   user: User;
   projectId: number;
   title: string;
@@ -67,9 +67,9 @@ export function createMilestone(input: {
   amountCents: number;
   currency?: string;
   deadline?: string | null;
-}): ServiceResult<{ milestoneId: number }> {
-  const db = getDatabase();
-  const project = db.select().from(projects).where(eq(projects.id, input.projectId)).get();
+}): Promise<ServiceResult<{ milestoneId: number }>> {
+  const db = await getDatabase();
+  const project = await db.select().from(projects).where(eq(projects.id, input.projectId)).get();
   if (!project) return { ok: false, code: "NOT_FOUND", message: "Project not found." };
   if (project.clientId !== input.user.id || input.user.role !== "client") {
     return { ok: false, code: "FORBIDDEN", message: "You don't own this project." };
@@ -102,7 +102,7 @@ export function createMilestone(input: {
     deadline = input.deadline;
   }
   const now = Date.now();
-  const result = db
+  const result = await db
     .insert(milestones)
     .values({
       clientId: input.user.id,
@@ -118,7 +118,7 @@ export function createMilestone(input: {
     })
     .run();
   const milestoneId = Number(result.lastInsertRowid);
-  writeEvent(db, {
+  await writeEvent(db, {
     milestoneId,
     type: "DRAFT_CREATED",
     actor: input.user.name,

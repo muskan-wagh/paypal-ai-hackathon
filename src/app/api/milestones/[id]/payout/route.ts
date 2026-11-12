@@ -25,8 +25,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
   }
 
-  const db = getDatabase();
-  const milestone = db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
+  const db = await getDatabase();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
   if (!milestone) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Milestone not found" }, { status: 404 });
   }
@@ -53,7 +53,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     );
   }
   const freelancer = milestone.freelancerId
-    ? db.select().from(users).where(eq(users.id, milestone.freelancerId)).get()
+    ? await db.select().from(users).where(eq(users.id, milestone.freelancerId)).get()
     : null;
   const payoutReceiver = freelancer?.sandboxEmail?.trim();
   if (!payoutReceiver) {
@@ -68,7 +68,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const payout = await createPayout(payoutReceiver, amount, milestone.currency);
     assertTransition(milestone.status, "PAID");
     const now = Date.now();
-    db.insert(payouts)
+    await db.insert(payouts)
       .values({
         milestoneId,
         batchId: payout.batch_header.payout_batch_id,
@@ -80,8 +80,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         updatedAt: now,
       })
       .run();
-    db.update(milestones).set({ status: "PAID", updatedAt: now }).where(eq(milestones.id, milestoneId)).run();
-    writeEvent(db, {
+    await db.update(milestones).set({ status: "PAID", updatedAt: now }).where(eq(milestones.id, milestoneId)).run();
+    await writeEvent(db, {
       milestoneId,
       type: "PAID",
       actor: user.name,

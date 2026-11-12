@@ -18,10 +18,10 @@ export default async function ClientPaymentsPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (user.role !== "client") redirect("/dashboard");
-  const db = getDatabase();
+  const db = await getDatabase();
 
-  const myMilestones = db.select().from(milestones).where(eq(milestones.clientId, user.id)).all();
-  const myPayouts = db
+  const myMilestones = await db.select().from(milestones).where(eq(milestones.clientId, user.id)).all();
+  const myPayouts = await db
     .select({ payout: payouts, milestoneTitle: milestones.title, currency: milestones.currency })
     .from(payouts)
     .innerJoin(milestones, eq(payouts.milestoneId, milestones.id))

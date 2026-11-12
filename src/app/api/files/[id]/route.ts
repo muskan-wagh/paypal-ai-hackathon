@@ -13,11 +13,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const user = await getSessionUser();
   if (!user) return new NextResponse("unauthenticated", { status: 401 });
 
-  const db = getDatabase();
-  const row = db.select().from(files).where(eq(files.id, fileId)).get();
+  const db = await getDatabase();
+  const row = await db.select().from(files).where(eq(files.id, fileId)).get();
   if (!row) return new NextResponse("not found", { status: 404 });
 
-  const memberRow = db
+  const memberRow = await db
     .select({ clientId: milestones.clientId, freelancerId: milestones.freelancerId })
     .from(files)
     .innerJoin(submissions, eq(files.submissionId, submissions.id))

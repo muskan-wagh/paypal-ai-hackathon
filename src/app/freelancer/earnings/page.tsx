@@ -18,9 +18,9 @@ export default async function EarningsPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (user.role !== "freelancer") redirect("/dashboard");
-  const db = getDatabase();
+  const db = await getDatabase();
 
-  const myPayouts = db
+  const myPayouts = await db
     .select({ payout: payouts, currency: milestones.currency, milestoneTitle: milestones.title })
     .from(payouts)
     .innerJoin(milestones, eq(payouts.milestoneId, milestones.id))
@@ -28,7 +28,7 @@ export default async function EarningsPage() {
     .orderBy(desc(payouts.createdAt))
     .all();
 
-  const assigned = db.select().from(milestones).where(eq(milestones.freelancerId, user.id)).all();
+  const assigned = await db.select().from(milestones).where(eq(milestones.freelancerId, user.id)).all();
   const earnedTotal = myPayouts.reduce((sum, row) => sum + row.payout.amountCents, 0);
   const approvedNotPaid = assigned
     .filter((m) => m.status === "APPROVED")

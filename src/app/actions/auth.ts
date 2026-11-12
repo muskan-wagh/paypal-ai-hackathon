@@ -32,11 +32,11 @@ export async function registerUser(
     return { error: "Choose an account type (client or freelancer)." };
   }
 
-  const db = getDatabase();
-  const existing = db.select({ id: users.id }).from(users).where(eq(users.email, email)).get();
+  const db = await getDatabase();
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).get();
   if (existing) return { error: "An account with this email already exists. Try logging in." };
 
-  const result = db
+  const result = await db
     .insert(users)
     .values({
       name,
@@ -60,7 +60,7 @@ export async function loginWithPassword(
 
   if (!email || !password) return { error: "Enter your email and password." };
 
-  const user = getDatabase().select().from(users).where(eq(users.email, email)).get();
+  const user = await (await getDatabase()).select().from(users).where(eq(users.email, email)).get();
   if (!user || !verifyPassword(password, user.passwordHash)) {
     return { error: "Invalid email or password." };
   }

@@ -31,11 +31,11 @@ export default async function ProjectsPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (user.role !== "client") redirect("/dashboard");
-  const db = getDatabase();
+  const db = await getDatabase();
 
-  const rows = db.select().from(projects).where(eq(projects.clientId, user.id)).orderBy(desc(projects.updatedAt)).all();
-  const allMilestones = db.select().from(milestones).where(eq(milestones.clientId, user.id)).all();
-  const counts = db
+  const rows = await db.select().from(projects).where(eq(projects.clientId, user.id)).orderBy(desc(projects.updatedAt)).all();
+  const allMilestones = await db.select().from(milestones).where(eq(milestones.clientId, user.id)).all();
+  const counts = await db
     .select({ projectId: milestones.projectId, count: sql<number>`count(*)` })
     .from(milestones)
     .where(eq(milestones.clientId, user.id))
@@ -43,7 +43,7 @@ export default async function ProjectsPage() {
     .all();
 
   const countsByProject = new Map(counts.map((c) => [c.projectId, Number(c.count)]));
-  const valueRow = db
+  const valueRow = await db
     .select({ total: sql<number>`coalesce(sum(${milestones.amountCents}), 0)` })
     .from(milestones)
     .where(eq(milestones.clientId, user.id))

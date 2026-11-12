@@ -18,12 +18,12 @@ export function newInviteToken(): string {
   return randomBytes(24).toString("base64url"); // 32 chars, URL-safe, unguessable
 }
 
-export function createInvitation(input: {
+export async function createInvitation(input: {
   user: User;
   milestoneId: number;
   inviteeEmail: string;
   message?: string;
-}): ServiceResult<{ token: string; invitationId: number }> {
+}): Promise<ServiceResult<{ token: string; invitationId: number }>> {
   if (input.user.role !== "client") {
     return { ok: false, code: "FORBIDDEN", message: "Only clients can invite freelancers." };
   }
@@ -34,8 +34,8 @@ export function createInvitation(input: {
   if (email === input.user.email) {
     return { ok: false, code: "BAD_EMAIL", message: "Invite a freelancer — not yourself." };
   }
-  const db = getDatabase();
-  const milestone = db.select().from(milestones).where(eq(milestones.id, input.milestoneId)).get();
+  const db = await getDatabase();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, input.milestoneId)).get();
   if (!milestone) return { ok: false, code: "NOT_FOUND", message: "Milestone not found." };
   if (milestone.clientId !== input.user.id) {
     return { ok: false, code: "FORBIDDEN", message: "You don't own this milestone." };
@@ -51,7 +51,7 @@ export function createInvitation(input: {
 
   // The invited email must correspond to a registered freelancer account —
   // invitations land in the recipient's dashboard and are claimable only there.
-  const invitee = db.select().from(users).where(eq(users.email, email)).get();
+  const invitee = await db.select().from(users).where(eq(users.email, email)).get();
   if (!invitee || invitee.role !== "freelancer") {
     return {
       ok: false,
@@ -69,7 +69,7 @@ export function createInvitation(input: {
 
   const now = Date.now();
   const token = newInviteToken();
-  const result = db
+  const result = await db
     .insert(invitations)
     .values({
       milestoneId: milestone.id,
@@ -85,12 +85,12 @@ export function createInvitation(input: {
 
   if (milestone.status === "CHECKLISTED") {
     assertTransition(milestone.status, "INVITED");
-    db.update(milestones)
+    await db.update(milestones)
       .set({ status: "INVITED", updatedAt: now })
       .where(eq(milestones.id, milestone.id))
       .run();
   }
-  writeEvent(db, {
+  await writeEvent(db, {
     milestoneId: milestone.id,
     type: "INVITED",
     actor: input.user.name,
@@ -117,12 +117,12 @@ export type InvitationPreview = {
   };
 };
 
-export function viewInvitation(token: string): ServiceResult<InvitationPreview> {
-  const db = getDatabase();
-  const invite = db.select().from(invitations).where(eq(invitations.token, token)).get();
+export async function viewInvitation(token: string): Promise<ServiceResult<InvitationPreview>> {
+  const db = await getDatabase();
+  const invite = await db.select().from(invitations).where(eq(invitations.token, token)).get();
   if (!invite) return { ok: false, code: "NOT_FOUND", message: "Invitation not found." };
-  const inviter = db.select().from(users).where(eq(users.id, invite.inviterId)).get();
-  const milestone = db
+  const inviter = await db.select().from(users).where(eq(users.id, invite.inviterId)).get();
+  const milestone = await db
     .select()
     .from(milestones)
     .where(eq(milestones.id, invite.milestoneId))
@@ -152,21 +152,21 @@ export function viewInvitation(token: string): ServiceResult<InvitationPreview> 
 }
 
 /** Accept: the invitee email must match the logged-in freelancer, token valid & pending. */
-export function acceptInvitation(input: { user: User; token: string }): ServiceResult<{ milestoneId: number }> {
+export async function acceptInvitation(input: { user: User; token: string }): Promise<ServiceResult<{ milestoneId: number }>> {
   if (input.user.role !== "freelancer") {
     return { ok: false, code: "FORBIDDEN", message: "Only freelancers can accept invitations." };
   }
   if (!input.user.email) {
     return { ok: false, code: "FORBIDDEN", message: "Your account has no email — log in again." };
   }
-  const db = getDatabase();
-  const invite = db.select().from(invitations).where(eq(invitations.token, input.token)).get();
+  const db = await getDatabase();
+  const invite = await db.select().from(invitations).where(eq(invitations.token, input.token)).get();
   if (!invite) return { ok: false, code: "NOT_FOUND", message: "Invitation not found." };
   if (invite.status !== "pending") {
     return { ok: false, code: "ALREADY_HANDLED", message: `This invitation was already ${invite.status}.` };
   }
   if (invite.expiresAt < Date.now()) {
-    db.update(invitations).set({ status: "expired" }).where(eq(invitations.id, invite.id)).run();
+    await db.update(invitations).set({ status: "expired" }).where(eq(invitations.id, invite.id)).run();
     return { ok: false, code: "EXPIRED", message: "This invitation has expired." };
   }
   if (invite.inviteeEmail !== input.user.email.toLowerCase()) {
@@ -176,7 +176,7 @@ export function acceptInvitation(input: { user: User; token: string }): ServiceR
       message: `This invitation was sent to ${invite.inviteeEmail}. Register or log in with that email.`,
     };
   }
-  const milestone = db.select().from(milestones).where(eq(milestones.id, invite.milestoneId)).get();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, invite.milestoneId)).get();
   if (!milestone) return { ok: false, code: "NOT_FOUND", message: "Milestone not found." };
   if (milestone.status !== "INVITED") {
     return {
@@ -188,20 +188,20 @@ export function acceptInvitation(input: { user: User; token: string }): ServiceR
 
   const now = Date.now();
   assertTransition(milestone.status, "ACCEPTED");
-  db.update(milestones)
+  await db.update(milestones)
     .set({ status: "ACCEPTED", freelancerId: input.user.id, updatedAt: now })
     .where(eq(milestones.id, milestone.id))
     .run();
-  db.update(invitations)
+  await db.update(invitations)
     .set({ status: "accepted", inviteeId: input.user.id, acceptedAt: now })
     // Any other pending invites for this milestone become moot once it's accepted.
     .where(eq(invitations.id, invite.id))
     .run();
-  db.update(invitations)
+  await db.update(invitations)
     .set({ status: "expired" })
     .where(and(eq(invitations.milestoneId, milestone.id), eq(invitations.status, "pending")))
     .run();
-  writeEvent(db, {
+  await writeEvent(db, {
     milestoneId: milestone.id,
     type: "ACCEPTED",
     actor: input.user.name,
@@ -210,15 +210,15 @@ export function acceptInvitation(input: { user: User; token: string }): ServiceR
   return { ok: true, data: { milestoneId: milestone.id } };
 }
 
-export function declineInvitation(input: { user: User; token: string }): ServiceResult<{ milestoneId: number }> {
+export async function declineInvitation(input: { user: User; token: string }): Promise<ServiceResult<{ milestoneId: number }>> {
   if (input.user.role !== "freelancer") {
     return { ok: false, code: "FORBIDDEN", message: "Only freelancers can decline invitations." };
   }
   if (!input.user.email) {
     return { ok: false, code: "FORBIDDEN", message: "Your account has no email — log in again." };
   }
-  const db = getDatabase();
-  const invite = db.select().from(invitations).where(eq(invitations.token, input.token)).get();
+  const db = await getDatabase();
+  const invite = await db.select().from(invitations).where(eq(invitations.token, input.token)).get();
   if (!invite) return { ok: false, code: "NOT_FOUND", message: "Invitation not found." };
   if (invite.status !== "pending") {
     return { ok: false, code: "ALREADY_HANDLED", message: `This invitation was already ${invite.status}.` };
@@ -227,15 +227,15 @@ export function declineInvitation(input: { user: User; token: string }): Service
     return { ok: false, code: "WRONG_USER", message: "This invitation was sent to another freelancer." };
   }
   const now = Date.now();
-  db.update(invitations).set({ status: "declined", declinedAt: now }).where(eq(invitations.id, invite.id)).run();
-  const milestone = db.select().from(milestones).where(eq(milestones.id, invite.milestoneId)).get();
+  await db.update(invitations).set({ status: "declined", declinedAt: now }).where(eq(invitations.id, invite.id)).run();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, invite.milestoneId)).get();
   if (milestone && milestone.status === "INVITED") {
     // Reopening the invite step: the client can invite someone else.
     assertTransition(milestone.status, "CHECKLISTED");
-    db.update(milestones).set({ status: "CHECKLISTED", updatedAt: now }).where(eq(milestones.id, milestone.id)).run();
+    await db.update(milestones).set({ status: "CHECKLISTED", updatedAt: now }).where(eq(milestones.id, milestone.id)).run();
   }
   if (milestone) {
-    writeEvent(db, {
+    await writeEvent(db, {
       milestoneId: milestone.id,
       type: "DECLINED",
       actor: input.user.name,
@@ -247,10 +247,10 @@ export function declineInvitation(input: { user: User; token: string }): Service
 }
 
 /** Invitations the freelancer received (history) or client sent. */
-export function listInvitationsFor(user: User) {
-  const db = getDatabase();
+export async function listInvitationsFor(user: User) {
+  const db = await getDatabase();
   if (user.role === "freelancer") {
-    return db
+    return await db
       .select({
         token: invitations.token,
         status: invitations.status,
@@ -271,7 +271,7 @@ export function listInvitationsFor(user: User) {
       .orderBy(desc(invitations.createdAt))
       .all();
   }
-  return db
+  return await db
     .select({
       token: invitations.token,
       status: invitations.status,

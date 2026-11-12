@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { getDatabase } from "@/db";
+import { getDatabase, type Database } from "@/db";
 import {
   checklistItems,
   evaluations,
@@ -76,9 +76,9 @@ export async function extractPdfText(data: Buffer): Promise<string | null> {
 export type StoredProofFiles = StoredFile[];
 
 /** Loads the submission's stored files. */
-export function loadSubmissionFiles(submissionId: number): StoredProofFiles {
-  const db = getDatabase();
-  const rows = db.select().from(files).where(eq(files.submissionId, submissionId)).all();
+export async function loadSubmissionFiles(submissionId: number): Promise<StoredProofFiles> {
+  const db = await getDatabase();
+  const rows = await db.select().from(files).where(eq(files.submissionId, submissionId)).all();
   return rows.map((row) => ({
     filename: row.filename,
     mimeType: row.mimeType,
@@ -98,19 +98,20 @@ export type EvaluationOutcome = {
 
 /** Phase 6 core — runs the AI evaluation for a SUBMITTED milestone. */
 export async function runProofEvaluation(milestone: Milestone, submission: Submission): Promise<EvaluationOutcome> {
-  const db = getDatabase();
+  const db = await getDatabase();
 
-  const checklist = db
-    .select()
-    .from(checklistItems)
-    .where(eq(checklistItems.milestoneId, milestone.id))
-    .all()
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const checklist = (
+    await db
+      .select()
+      .from(checklistItems)
+      .where(eq(checklistItems.milestoneId, milestone.id))
+      .all()
+  ).sort((a, b) => a.sortOrder - b.sortOrder);
   if (checklist.length === 0) {
     throw new AIFailedError([{ model: "-", error: "Milestone has no checklist items", ms: 0 }]);
   }
 
-  const fileRows = loadSubmissionFiles(submission.id);
+  const fileRows = await loadSubmissionFiles(submission.id);
   const images = fileRows.filter((f) => f.mimeType.startsWith("image/"));
   const pdfBuffers = fileRows.filter((f) => f.mimeType === "application/pdf");
   let pdfText: string | null = null;
@@ -176,7 +177,7 @@ export async function runProofEvaluation(milestone: Milestone, submission: Submi
   const rawJson = JSON.stringify({ model: result.model, tokens: result.tokens, parsed });
 
   const now = Date.now();
-  const evaluation = db
+  const evaluation = await db
     .insert(evaluations)
     .values({
       milestoneId: milestone.id,
@@ -192,7 +193,7 @@ export async function runProofEvaluation(milestone: Milestone, submission: Submi
     .get();
 
   for (const item of normalized) {
-    db.insert(evaluationItems)
+    await db.insert(evaluationItems)
       .values({
         evaluationId: evaluation.id,
         checklistItemId: checklist[item.checklistIndex].id,
@@ -214,17 +215,17 @@ export async function runProofEvaluation(milestone: Milestone, submission: Submi
 }
 
 /** Marks a milestone EVALUATED + writes the ledger entry (caller guards the transition). */
-export function markEvaluated(
-  db: ReturnType<typeof getDatabase>,
+export async function markEvaluated(
+  db: Database,
   milestoneId: number,
   outcome: EvaluationOutcome,
   submissionActor: string,
 ) {
-  db.update(milestones)
+  await db.update(milestones)
     .set({ status: "EVALUATED", updatedAt: Date.now() })
     .where(eq(milestones.id, milestoneId))
     .run();
-  writeEvent(db, {
+  await writeEvent(db, {
     milestoneId,
     type: "EVALUATED",
     actor: "ai",

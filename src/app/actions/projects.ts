@@ -17,7 +17,7 @@ function parseAmountCents(value: string): number | null {
 export async function createProjectAction(_prev: FormState, formData: FormData) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const result = createProject({
+  const result = await createProject({
     user,
     title: String(formData.get("title") ?? ""),
     description: String(formData.get("description") ?? ""),
@@ -33,7 +33,7 @@ export async function createMilestoneAction(_prev: FormState, formData: FormData
   const amountCents = parseAmountCents(amountRaw);
   if (amountCents === null) return { error: "Enter an amount like 250 or 250.00." };
 
-  const result = createMilestone({
+  const result = await createMilestone({
     user,
     projectId: Number(formData.get("projectId")),
     title: String(formData.get("title") ?? ""),
@@ -48,7 +48,7 @@ export async function createMilestoneAction(_prev: FormState, formData: FormData
 export async function inviteAction(_prev: FormState, formData: FormData) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  const result = createInvitation({
+  const result = await createInvitation({
     user,
     milestoneId: Number(formData.get("milestoneId")),
     inviteeEmail: String(formData.get("inviteeEmail") ?? ""),

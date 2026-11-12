@@ -20,8 +20,7 @@ export default async function ClientLayout({
   if (!user) redirect("/login");
   if (user.role !== "client") redirect("/dashboard");
 
-  const myMilestones = getDatabase()
-    .select({ status: milestones.status })
+  const myMilestones = await (await getDatabase()).select({ status: milestones.status })
     .from(milestones)
     .where(eq(milestones.clientId, user.id))
     .all();

@@ -17,7 +17,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   if (!Number.isInteger(projectId) || projectId <= 0) {
     return NextResponse.json(BAD_ID, { status: 400 });
   }
-  const result = getProjectFor(user, projectId);
+  const result = await getProjectFor(user, projectId);
   if (!result.ok) {
     const status = result.code === "NOT_FOUND" ? 404 : 403;
     return NextResponse.json({ ok: false, code: result.code, message: result.message }, { status });
@@ -34,7 +34,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (!Number.isInteger(projectId) || projectId <= 0) {
     return NextResponse.json(BAD_ID, { status: 400 });
   }
-  const result = getProjectFor(user, projectId);
+  const result = await getProjectFor(user, projectId);
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, code: result.code, message: result.message },
@@ -62,8 +62,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
       { status: 409 },
     );
   }
-  const db = getDatabase();
-  db.update(projects)
+  const db = await getDatabase();
+  await db.update(projects)
     .set({ title, description, updatedAt: Date.now() })
     .where(eq(projects.id, projectId))
     .run();
@@ -79,7 +79,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   if (!Number.isInteger(projectId) || projectId <= 0) {
     return NextResponse.json(BAD_ID, { status: 400 });
   }
-  const result = getProjectFor(user, projectId);
+  const result = await getProjectFor(user, projectId);
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, code: result.code, message: result.message },
@@ -92,10 +92,10 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       { status: 409 },
     );
   }
-  const db = getDatabase();
+  const db = await getDatabase();
   for (const milestone of result.milestones) {
-    db.delete(milestones).where(eq(milestones.id, milestone.id)).run();
+    await db.delete(milestones).where(eq(milestones.id, milestone.id)).run();
   }
-  db.delete(projects).where(eq(projects.id, projectId)).run();
+  await db.delete(projects).where(eq(projects.id, projectId)).run();
   return NextResponse.json({ ok: true });
 }

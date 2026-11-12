@@ -17,8 +17,7 @@ export default async function FreelancerLayout({
   if (!user) redirect("/login");
   if (user.role !== "freelancer") redirect("/dashboard");
 
-  const pending = getDatabase()
-    .select({ count: sql<number>`count(*)` })
+  const pending = await (await getDatabase()).select({ count: sql<number>`count(*)` })
     .from(invitations)
     .where(and(eq(invitations.inviteeEmail, user.email!), eq(invitations.status, "pending")))
     .get();

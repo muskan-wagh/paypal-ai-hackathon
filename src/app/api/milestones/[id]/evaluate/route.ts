@@ -23,8 +23,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
   }
 
-  const db = getDatabase();
-  const milestone = db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
+  const db = await getDatabase();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
   if (!milestone) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Milestone not found" }, { status: 404 });
   }
@@ -35,13 +35,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, code: "INVALID_STATE", message: `Milestone must be SUBMITTED (currently ${milestone.status})` }, { status: 409 });
   }
 
-  const latest = db
-    .select()
-    .from(submissions)
-    .where(eq(submissions.milestoneId, milestoneId))
-    .orderBy(submissions.createdAt)
-    .all()
-    .pop();
+  const latest = (
+    await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.milestoneId, milestoneId))
+      .orderBy(submissions.createdAt)
+      .all()
+  ).pop();
   if (!latest) {
     return NextResponse.json({ ok: false, code: "NO_SUBMISSION", message: "No submission to evaluate" }, { status: 409 });
   }
@@ -49,7 +50,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   try {
     const outcome = await runProofEvaluation(milestone, latest);
     assertTransition(milestone.status, "EVALUATED");
-    markEvaluated(db, milestoneId, outcome, user.name);
+    await markEvaluated(db, milestoneId, outcome, user.name);
     return NextResponse.json({
       ok: true,
       evaluationId: outcome.evaluationId,

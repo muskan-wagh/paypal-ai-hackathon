@@ -22,8 +22,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
   }
 
-  const db = getDatabase();
-  const milestone = db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
+  const db = await getDatabase();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
   if (!milestone) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Milestone not found" }, { status: 404 });
   }
@@ -37,17 +37,18 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     );
   }
 
-  const latestEval = db
-    .select()
-    .from(evaluations)
-    .where(eq(evaluations.milestoneId, milestoneId))
-    .orderBy(evaluations.createdAt)
-    .all()
-    .pop();
+  const latestEval = (
+    await db
+      .select()
+      .from(evaluations)
+      .where(eq(evaluations.milestoneId, milestoneId))
+      .orderBy(evaluations.createdAt)
+      .all()
+  ).pop();
 
   assertTransition(milestone.status, "APPROVED");
-  db.update(milestones).set({ status: "APPROVED", updatedAt: Date.now() }).where(eq(milestones.id, milestoneId)).run();
-  writeEvent(db, {
+  await db.update(milestones).set({ status: "APPROVED", updatedAt: Date.now() }).where(eq(milestones.id, milestoneId)).run();
+  await writeEvent(db, {
     milestoneId,
     type: "APPROVED",
     actor: user.name,

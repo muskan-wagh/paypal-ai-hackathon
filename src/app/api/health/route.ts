@@ -20,11 +20,11 @@ export async function GET() {
 
   // DB counts
   try {
-    const db = getDatabase();
+    const db = await getDatabase();
     health.db = {
       ok: true,
-      usersCount: db.select().from(users).all().length,
-      milestonesCount: db.select().from(milestones).all().length,
+      usersCount: (await db.select().from(users).all()).length,
+      milestonesCount: (await db.select().from(milestones).all()).length,
     };
   } catch (error) {
     health.db = { ok: false, error: error instanceof Error ? error.message : String(error) };

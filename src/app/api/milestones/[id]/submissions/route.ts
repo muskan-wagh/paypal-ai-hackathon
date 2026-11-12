@@ -30,8 +30,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
   }
 
-  const db = getDatabase();
-  const milestone = db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
+  const db = await getDatabase();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
   if (!milestone) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Milestone not found" }, { status: 404 });
   }
@@ -73,7 +73,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const now = Date.now();
-  const submission = db
+  const submission = await db
     .insert(submissions)
     .values({ milestoneId, freelancerId: user.id, note, createdAt: now })
     .returning()
@@ -82,7 +82,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   for (const file of rawFiles) {
     if (file.size === 0) continue;
     const buffer = Buffer.from(await file.arrayBuffer());
-    db.insert(files)
+    await db.insert(files)
       .values({
         submissionId: submission.id,
         filename: file.name.slice(0, 255),
@@ -95,11 +95,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   assertTransition(milestone.status, "SUBMITTED");
-  db.update(milestones)
+  await db.update(milestones)
     .set({ status: "SUBMITTED", updatedAt: now })
     .where(eq(milestones.id, milestoneId))
     .run();
-  writeEvent(db, {
+  await writeEvent(db, {
     milestoneId,
     type: "SUBMITTED",
     actor: user.name,
@@ -109,7 +109,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Run the AI evaluation inline (containment: failure → SUBMITTED + retry button).
   try {
     const outcome = await runProofEvaluation(milestone, submission);
-    markEvaluated(db, milestoneId, outcome, user.name);
+    await markEvaluated(db, milestoneId, outcome, user.name);
     return NextResponse.json({
       ok: true,
       submissionId: submission.id,

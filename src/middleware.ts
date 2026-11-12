@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Presence-only gate for authenticated app areas. Deliberately imports nothing
- * app-specific — middleware runs in the Edge runtime (no better-sqlite3). Deep
+ * app-specific — middleware runs in the Edge runtime (no database access). Deep
  * HMAC verification + DB role checks happen server-side in getSessionUser() and
  * the role layouts on every page/handler.
  */

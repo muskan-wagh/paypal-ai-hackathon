@@ -51,7 +51,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     amountCents = body.amountCents;
   }
 
-  const result = createMilestone({
+  const result = await createMilestone({
     user,
     projectId,
     title: body.title,

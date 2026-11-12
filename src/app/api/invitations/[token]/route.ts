@@ -13,7 +13,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   if (!token || token.length < 10) {
     return NextResponse.json({ ok: false, code: "BAD_TOKEN", message: "Invalid invitation token" }, { status: 400 });
   }
-  const result = viewInvitation(token);
+  const result = await viewInvitation(token);
   if (!result.ok) {
     return NextResponse.json({ ok: false, code: result.code, message: result.message }, { status: 404 });
   }

@@ -104,7 +104,7 @@ export default async function MilestoneDetailPage({
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const db = getDatabase();
+  const db = await getDatabase();
   const client = alias(usersTable, "client_table");
   const freelancer = alias(usersTable, "freelancer_table");
 
@@ -135,7 +135,7 @@ export default async function MilestoneDetailPage({
   let myPendingInvite: { token: string } | null = null;
   if (user.role === "client" && !isOwner) notFound();
   if (user.role === "freelancer" && !isAssignedFreelancer) {
-    myPendingInvite = db
+    myPendingInvite = await db
       .select({ token: invitations.token })
       .from(invitations)
       .where(
@@ -149,7 +149,7 @@ export default async function MilestoneDetailPage({
     if (!myPendingInvite) notFound();
   }
 
-  const checklist = db
+  const checklist = await db
     .select()
     .from(checklistItems)
     .where(eq(checklistItems.milestoneId, milestoneId))
@@ -197,7 +197,7 @@ export default async function MilestoneDetailPage({
     .where(eq(payouts.milestoneId, milestoneId))
     .orderBy(desc(payouts.createdAt));
 
-  const eventRows = db
+  const eventRows = await db
     .select()
     .from(events)
     .where(eq(events.milestoneId, milestoneId))
@@ -206,7 +206,7 @@ export default async function MilestoneDetailPage({
 
   const invitationRows =
     isOwner && (status === "CHECKLISTED" || status === "INVITED")
-      ? db
+      ? await db
           .select({
             id: invitations.id,
             token: invitations.token,

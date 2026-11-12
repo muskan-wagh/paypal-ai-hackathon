@@ -11,8 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
   if (await getSessionUser()) redirect("/dashboard");
-  const demoAccounts = getDatabase()
-    .select({ name: users.name, email: users.email, role: users.role })
+  const demoAccounts = await (await getDatabase()).select({ name: users.name, email: users.email, role: users.role })
     .from(users)
     .where(like(users.email, "%@proofpay.dev"))
     .orderBy(asc(users.role))

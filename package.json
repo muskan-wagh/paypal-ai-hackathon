@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "db:reset": "tsx scripts/db-reset.ts",
@@ -16,12 +16,12 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
+    "@libsql/client": "^0.18.0",
     "@openrouter/ai-sdk-provider": "^3.1.0",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "@paypal/react-paypal-js": "^10.6.1",
     "ai": "^7.0.159",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.1",
     "drizzle-orm": "^0.45.4",
@@ -38,7 +38,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

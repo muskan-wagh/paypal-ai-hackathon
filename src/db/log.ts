@@ -1,11 +1,10 @@
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "./schema";
+import type { Database } from "./index";
 import { events } from "./schema";
 
-export type Db = BetterSQLite3Database<typeof schema>;
+export type Db = Database;
 
 /** Append one event to the audit ledger (the UI timeline reads only from here). */
-export function writeEvent(
+export async function writeEvent(
   db: Db,
   input: {
     milestoneId: number;
@@ -14,13 +13,12 @@ export function writeEvent(
     payload?: Record<string, unknown>;
   },
 ) {
-  db.insert(events)
+  await db.insert(events)
     .values({
       milestoneId: input.milestoneId,
       type: input.type,
       actor: input.actor,
       payloadJson: JSON.stringify(input.payload ?? {}),
       createdAt: Date.now(),
-    })
-    .run();
+    });
 }

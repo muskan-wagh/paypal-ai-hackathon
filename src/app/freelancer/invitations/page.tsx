@@ -24,7 +24,7 @@ export default async function InvitationsPage() {
   if (!user) redirect("/login");
   if (user.role !== "freelancer") redirect("/dashboard");
 
-  const rows = listInvitationsFor(user);
+  const rows = await listInvitationsFor(user);
   const pending = rows.filter((r) => r.status === "pending" && r.expiresAt > Date.now());
   const history = rows.filter((r) => !pending.includes(r));
 

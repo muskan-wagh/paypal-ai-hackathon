@@ -9,7 +9,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
   const { token } = await params;
-  const result = acceptInvitation({ user, token });
+  const result = await acceptInvitation({ user, token });
   if (!result.ok) {
     const status =
       result.code === "UNAUTHENTICATED" || result.code === "FORBIDDEN" || result.code === "WRONG_USER"

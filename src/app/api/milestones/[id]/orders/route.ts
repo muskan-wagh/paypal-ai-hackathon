@@ -23,8 +23,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
   }
 
-  const db = getDatabase();
-  const milestone = db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
+  const db = await getDatabase();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
   if (!milestone) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Milestone not found" }, { status: 404 });
   }
@@ -66,11 +66,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       referenceId: `proofpay-milestone-${milestoneId}`,
     });
 
-    db.update(milestones)
+    await db.update(milestones)
       .set({ paypalOrderId: order.id, updatedAt: Date.now() })
       .where(eq(milestones.id, milestoneId))
       .run();
-    writeEvent(db, {
+    await writeEvent(db, {
       milestoneId,
       type: "ORDER_CREATED",
       actor: user.name,

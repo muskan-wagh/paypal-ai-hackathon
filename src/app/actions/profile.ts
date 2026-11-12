@@ -24,8 +24,8 @@ export async function updateProfileAction(
   if (name.length < 2) return { error: "Enter your full name." };
   if (!isValidEmail(email) || email === "") return { error: "Enter a valid login email." };
 
-  const db = getDatabase();
-  const clash = db
+  const db = await getDatabase();
+  const clash = await db
     .select({ id: users.id })
     .from(users)
     .where(and(eq(users.email, email), ne(users.id, user.id)))
@@ -40,7 +40,7 @@ export async function updateProfileAction(
     updates.sandboxEmail = sandboxEmailRaw || null;
   }
 
-  db.update(users)
+  await db.update(users)
     .set(updates)
     .where(eq(users.id, user.id))
     .run();

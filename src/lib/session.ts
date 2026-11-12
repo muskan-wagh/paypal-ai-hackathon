@@ -68,7 +68,7 @@ export async function getSessionUser(): Promise<User | null> {
   if (!token) return null;
   const userId = decodeSession(token);
   if (userId === null) return null;
-  return getDatabase().select().from(users).where(eq(users.id, userId)).get() ?? null;
+  return await (await getDatabase()).select().from(users).where(eq(users.id, userId)).get() ?? null;
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;

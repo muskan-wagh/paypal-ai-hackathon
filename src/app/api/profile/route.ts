@@ -41,8 +41,7 @@ export async function PUT(request: NextRequest) {
   if (!isValidEmail(email)) {
     return NextResponse.json({ ok: false, code: "BAD_EMAIL", message: "Enter a valid login email." }, { status: 400 });
   }
-  const existing = getDatabase()
-    .select({ id: users.id })
+  const existing = await (await getDatabase()).select({ id: users.id })
     .from(users)
     .where(eq(users.email, email))
     .get();
@@ -62,6 +61,6 @@ export async function PUT(request: NextRequest) {
     updates.sandboxEmail = sandboxEmail;
   }
 
-  getDatabase().update(users).set(updates).where(eq(users.id, user.id)).run();
+  await (await getDatabase()).update(users).set(updates).where(eq(users.id, user.id)).run();
   return NextResponse.json({ ok: true });
 }

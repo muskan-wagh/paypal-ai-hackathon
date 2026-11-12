@@ -36,8 +36,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
   }
 
-  const db = getDatabase();
-  const milestone = db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
+  const db = await getDatabase();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
   if (!milestone) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Milestone not found" }, { status: 404 });
   }
@@ -86,11 +86,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const nested = capture.purchase_units?.[0]?.payments?.captures?.[0];
     const now = Date.now();
 
-    db.update(milestones)
+    await db.update(milestones)
       .set({ status: "FUNDED", paypalOrderId: capture.id, paypalCaptureId: nested?.id ?? null, updatedAt: now })
       .where(eq(milestones.id, milestoneId))
       .run();
-    writeEvent(db, {
+    await writeEvent(db, {
       milestoneId,
       type: "FUNDED",
       actor: user.name,

@@ -39,8 +39,9 @@ npm run db:reset
 npm run db:reseed
 # (restart `npm run dev` afterwards so the server reopens the fresh DB file)
 
-# Deployments (render.yaml): seeds automatically on the first boot via
-# `npm run db:seed-if-empty` — later redeploys never wipe created accounts.
+# Deployments (Vercel): set DATABASE_URL/DATABASE_AUTH_TOKEN (Turso) + the
+# variables above in the Vercel dashboard, then run `npm run db:seed-if-empty`
+# against the remote DB once — later redeploys never wipe created accounts.
 
 # 5. Run
 npm run dev
@@ -57,6 +58,7 @@ Environment values (all from free accounts):
 | `AI_MODEL` | Pinned free vision model (see Tools statement below) |
 | `AI_FALLBACKS` | Comma-separated fallback model ids |
 | `SESSION_SECRET` | Any long random string (`openssl rand -hex 32`) |
+| `DATABASE_URL` / `DATABASE_AUTH_TOKEN` | Turso (libSQL) — prod only; leave unset for local dev (uses `.data/proofpay.db`) |
 
 **Important — sandbox country restriction:** sandbox accounts created in some countries
 (e.g. India) cannot send payouts or process checkout. Create **US-country** sandbox
@@ -76,9 +78,9 @@ DRAFT → CHECKLISTED → INVITED → ACCEPTED → FUNDED → SUBMITTED → EVAL
                                             ↘ REJECTED → SUBMITTED (resubmit)
 ```
 
-**Database**: SQLite + Drizzle ORM. All file bytes (≤ 5 MB) stored as BLOBs in the DB —
-no external storage needed. `events` table is the append-only audit ledger that drives
-the on-screen timeline.
+**Database**: SQLite (via libSQL/Turso in production) + Drizzle ORM. All file bytes (≤ 5 MB)
+stored as BLOBs in the DB — no external storage needed. `events` table is the append-only
+audit ledger that drives the on-screen timeline.
 
 **Auth**: real registration with bcrypt password hashing, wrapped in an HttpOnly
 HMAC-signed cookie `{userId, exp}`. Role checks enforced on every server route;
@@ -92,10 +94,10 @@ refuse demo records, so sample data can never trigger a real PayPal call.
 |---|---|
 | Framework | Next.js 15 (App Router, TypeScript) |
 | Styling | Tailwind CSS v4 |
-| Database | SQLite + Drizzle ORM + better-sqlite3 |
+| Database | SQLite + Drizzle ORM + @libsql/client (Turso in prod) |
 | AI | Vercel AI SDK v7 + OpenRouter (`@openrouter/ai-sdk-provider` v3) |
 | PayPal | `@paypal/react-paypal-js` v10 (JS SDK v6) + direct REST for Payouts |
-| Hosting | Render (Node service) |
+| Hosting | Vercel + Turso (hosted libSQL) |
 | License | MIT |
 
 ## Tools statement (for Devpost submission)
@@ -140,8 +142,20 @@ See `DEMO.md` for the scripted walkthrough and test credentials.
 
 ## Deployment
 
-See `render.yaml` for Render deployment configuration. Set environment variables in the
-Render dashboard (never commit secrets).
+Hosting is **Vercel + Turso** (both free tiers):
+
+1. Create a Turso database (`turso db create proofpay`) and grab its URL + auth token
+   (`turso db show proofpay --url`, `turso db tokens create proofpay`).
+2. In the Vercel project, set env vars: `DATABASE_URL`, `DATABASE_AUTH_TOKEN`,
+   `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_PAYOUT_RECEIVER`,
+   `OPENROUTER_API_KEY`, `AI_MODEL`, `AI_FALLBACKS`, `SESSION_SECRET`
+   (never commit secrets).
+3. Seed the demo workspace once against the remote DB:
+   `DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:seed-if-empty`
+   (or `db:reset` for a guaranteed-fresh demo; it drops all tables on a remote DB).
+4. Push to GitHub — Vercel auto-deploys on every commit.
+
+`render.yaml` remains as an alternative Render deployment target (persistent disk).
 
 ## License
 

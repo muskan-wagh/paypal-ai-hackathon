@@ -33,8 +33,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
   }
 
-  const db = getDatabase();
-  const milestone = db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
+  const db = await getDatabase();
+  const milestone = await db.select().from(milestones).where(eq(milestones.id, milestoneId)).get();
   if (!milestone) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Milestone not found" }, { status: 404 });
   }
@@ -63,8 +63,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
     assertTransition(milestone.status, "CHECKLISTED");
     const now = Date.now();
-    parsed.items.forEach((item, index) => {
-      db.insert(checklistItems)
+    for (const [index, item] of parsed.items.entries()) {
+      await db.insert(checklistItems)
         .values({
           milestoneId,
           title: item.title,
@@ -74,12 +74,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           createdAt: now,
         })
         .run();
-    });
-    db.update(milestones)
+    }
+    await db.update(milestones)
       .set({ status: "CHECKLISTED", updatedAt: now })
       .where(eq(milestones.id, milestoneId))
       .run();
-    writeEvent(db, {
+    await writeEvent(db, {
       milestoneId,
       type: "CHECKLIST_CREATED",
       actor: "ai",

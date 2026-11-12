@@ -6,7 +6,7 @@ import { createInvitation, listInvitationsFor } from "@/server/invitations";
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ ok: false, code: "UNAUTHENTICATED", message: "Log in first" }, { status: 401 });
-  return NextResponse.json({ ok: true, invitations: listInvitationsFor(user) });
+  return NextResponse.json({ ok: true, invitations: await listInvitationsFor(user) });
 }
 
 /** POST /api/invitations — invite a freelancer to a (CHECKLISTED) milestone. */
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   if (!Number.isInteger(milestoneId) || milestoneId <= 0) {
     return NextResponse.json({ ok: false, code: "BAD_ID", message: "Invalid milestone id" }, { status: 400 });
   }
-  const result = createInvitation({ user, milestoneId, inviteeEmail, message });
+  const result = await createInvitation({ user, milestoneId, inviteeEmail, message });
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, code: result.code, message: result.message },
