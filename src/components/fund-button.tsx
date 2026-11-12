@@ -32,6 +32,11 @@ function friendlyPaymentError(json: Json): string {
   }
   if (code === "ORDER_NOT_APPROVED") return "The payment window was closed before approval — click Fund again.";
   if (code === "UNAUTHENTICATED") return "Your session expired — log in again.";
+  if (code === "INVALID_STATE" && typeof json.message === "string") {
+    // Our own state-machine rejection — show the truthful message instead of
+    // implying PayPal was involved (it never gets called in this case).
+    return json.message;
+  }
   const base = "PayPal rejected the payment just now.";
   return debugId ? `${base} (PayPal debug id: ${debugId})` : base;
 }

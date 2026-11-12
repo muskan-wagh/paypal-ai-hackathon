@@ -12,7 +12,7 @@ import { captureOrder, getOrder, spikeErrorResponse } from "@/lib/paypal";
  * Integrity checks before a REAL capture:
  *   1. the order belongs to this route's milestone amount (no $2-charge attacks),
  *   2. PayPal shows it APPROVED.
- * `mock` runs PayPal's negative testing (decline path) — state stays CHECKLISTED.
+ * `mock` runs PayPal's negative testing (decline path) — state stays ACCEPTED.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -47,9 +47,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       { status: 403 },
     );
   }
-  if (milestone.status !== "CHECKLISTED") {
+  if (milestone.status !== "ACCEPTED") {
     return NextResponse.json(
-      { ok: false, code: "INVALID_STATE", message: `Milestone must be CHECKLISTED to capture (currently ${milestone.status})` },
+      { ok: false, code: "INVALID_STATE", message: `Milestone must be ACCEPTED to capture (currently ${milestone.status})` },
       { status: 409 },
     );
   }

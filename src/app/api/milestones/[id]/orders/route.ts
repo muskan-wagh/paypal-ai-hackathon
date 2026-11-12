@@ -8,8 +8,8 @@ import { isDemoMilestone } from "@/lib/demo";
 import { createOrder, spikeErrorResponse } from "@/lib/paypal";
 
 /**
- * Phase 5 — client creates the PayPal order for a CHECKLISTED milestone.
- * No state change yet: DRAFT→CHECKLISTED→FUNDED advances only on capture.
+ * Phase 5 — client creates the PayPal order for an ACCEPTED milestone.
+ * No state change yet: ACCEPTED → FUNDED advances only on capture.
  */
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
